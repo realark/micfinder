@@ -28,7 +28,7 @@ const MicFinder = () => {
 
   // Load data from localStorage on component mount
   useEffect(() => {
-    const savedMics = localStorage.getItem('openMics');
+    const savedMics = localStorage.getItem('openMics.json');
     if (savedMics) {
       setOpenMics(JSON.parse(savedMics));
     } else {
