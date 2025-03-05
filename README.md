@@ -1,3 +1,12 @@
+# Mic Finder
+Application for managing a shared calendar of open mics. Content is maintained by the shared community in the spirit of a wiki.
+
+## Quickstart
+
+```sh
+npm run dev
+```
+
 # React + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
