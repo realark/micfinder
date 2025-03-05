@@ -506,27 +506,6 @@ const MicFinder = () => {
         <h1 className="text-2xl font-bold mb-2">Open Mic Tracker</h1>
         <p className="text-gray-600">A community-maintained list of open mics</p>
 
-        <div className="mt-4 flex justify-between items-center">
-          {user && viewMode === 'view' && (
-            <button
-              onClick={() => {
-                setCurrentMic({
-                  id: '',
-                  name: '',
-                  contactInfo: '',
-                  location: '',
-                  recurrence: '',
-                  signupInstructions: '',
-                  startDate: new Date().toISOString().split('T')[0]
-                });
-                setViewMode('add');
-              }}
-              className="bg-green-500 text-white px-4 py-2 rounded"
-            >
-              Add New Open Mic
-            </button>
-          )}
-        </div>
       </header>
 
       {/* View toggle buttons */}
@@ -672,6 +651,28 @@ const MicFinder = () => {
           {displayMode === 'list' && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Available Open Mics</h2>
+
+        <div className="mt-4 flex justify-between items-center">
+          {user && viewMode === 'view' && (
+            <button
+              onClick={() => {
+                setCurrentMic({
+                  id: '',
+                  name: '',
+                  contactInfo: '',
+                  location: '',
+                  recurrence: '',
+                  signupInstructions: '',
+                  startDate: new Date().toISOString().split('T')[0]
+                });
+                setViewMode('add');
+              }}
+              className="bg-green-500 text-white px-4 py-2 rounded"
+            >
+              Add New Open Mic
+            </button>
+          )}
+        </div>
 
               {openMics.length === 0 ? (
                 <p>No open mics available yet. Be the first to add one!</p>
