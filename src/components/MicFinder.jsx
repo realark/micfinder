@@ -28,42 +28,19 @@ const MicFinder = () => {
 
   // Load data from localStorage on component mount
   useEffect(() => {
-    const savedMics = localStorage.getItem('openMics.json');
-    if (savedMics) {
+    const savedMics = localStorage.getItem('openMics');
+    if (savedMics && JSON.parse(savedMics).length > 0) {
       setOpenMics(JSON.parse(savedMics));
     } else {
-      // Sample data
-      const sampleData = [
-        {
-          id: '1',
-          name: "Joe's Comedy Club Open Mic",
-          contactInfo: "joe@joescomedy.com, (555) 123-4567",
-          location: "123 Laugh St, Comedy City",
-          recurrence: "Weekly on Tuesdays, 8PM",
-          signupInstructions: "Email joe@joescomedy.com or sign up at the venue 30 minutes before show",
-          startDate: "2025-03-04" // Today's date
-        },
-        {
-          id: '2',
-          name: "Poetry Café Open Reading",
-          contactInfo: "poetrycafe@email.com, @poetrycafe",
-          location: "456 Verse Ave, Rhyme Town",
-          recurrence: "First Sunday of every month, 7PM",
-          signupInstructions: "DM on Instagram @poetrycafe or sign up in person",
-          startDate: "2025-03-02" // Previous Sunday
-        },
-        {
-          id: '3',
-          name: "Jazz Lounge Musicians Night",
-          contactInfo: "jazzlounge@email.com, (555) 987-6543",
-          location: "789 Blue Note Ave, Jazz City",
-          recurrence: "Every Thursday, 9PM",
-          signupInstructions: "Sign up at the bar before 8PM",
-          startDate: "2025-03-06" // This coming Thursday
-        }
-      ];
-      setOpenMics(sampleData);
-      localStorage.setItem('openMics', JSON.stringify(sampleData));
+        fetch('./openMics.json')
+            .then(response => response.json())
+            .then(data => {
+                setOpenMics(data);
+                localStorage.setItem('openMics', JSON.stringify(data));
+            })
+            .catch(error => {
+                console.error('Error loading open mics data:', error);
+            });
     }
 
     // Check if user is logged in
