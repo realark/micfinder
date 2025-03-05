@@ -524,23 +524,6 @@ const MicFinder = () => {
             List
           </button>
         </div>
-
-        {displayMode === 'calendar' && (
-          <div className="bg-gray-100 p-1 rounded-lg inline-flex">
-            <button
-              onClick={() => setCalendarView('month')}
-              className={`px-3 py-1 rounded ${calendarView === 'month' ? 'bg-white shadow' : ''}`}
-            >
-              Month
-            </button>
-            <button
-              onClick={() => setCalendarView('week')}
-              className={`px-3 py-1 rounded ${calendarView === 'week' ? 'bg-white shadow' : ''}`}
-            >
-              Week
-            </button>
-          </div>
-        )}
       </div>
 
       {/* Form for adding/editing open mics */}
@@ -723,6 +706,23 @@ const MicFinder = () => {
           )}
         </>
       )}
+
+        {displayMode === 'calendar' && (
+          <div className="bg-gray-100 p-1 rounded-lg">
+            <button
+              onClick={() => setCalendarView('month')}
+              className={`px-3 py-1 rounded ${calendarView === 'month' ? 'bg-white shadow' : ''}`}
+            >
+              Month
+            </button>
+            <button
+              onClick={() => setCalendarView('week')}
+              className={`px-3 py-1 rounded ${calendarView === 'week' ? 'bg-white shadow' : ''}`}
+            >
+              Week
+            </button>
+          </div>
+        )}
     </div>
   );
 };
