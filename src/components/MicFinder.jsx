@@ -172,6 +172,12 @@ const MicFinder = () => {
       // Parse the start date
       const startDate = new Date(mic.startDate);
 
+      // Make sure we're not showing events before their start date
+      const currentDateObj = new Date(year, month, day);
+      if (currentDateObj < startDate) {
+        return false;
+      }
+
       // Check if this is the exact date
       if (startDate.getDate() === day &&
           startDate.getMonth() === month &&
