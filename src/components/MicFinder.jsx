@@ -474,38 +474,39 @@ const MicFinder = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-4">
+        <div class="flex justify-end">
+            {!user ? (
+                <form onSubmit={handleLogin} className="flex gap-2">
+                    <input
+                        type="text"
+                        placeholder="Username"
+                        value={loginForm.username}
+                        onChange={(e) => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
+                        className="border p-2 rounded"
+                        required
+                    />
+                    <input
+                        type="password"
+                        placeholder="Password"
+                        value={loginForm.password}
+                        onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+                        className="border p-2 rounded"
+                        required
+                    />
+                    <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Login</button>
+                </form>
+            ) : (
+                <div className="flex gap-2 items-center">
+                    <span>Logged in as {user.username}</span>
+                    <button onClick={handleLogout} className="bg-gray-300 px-3 py-1 rounded">Logout</button>
+                </div>
+            )}
+        </div>
       <header className="mb-6">
         <h1 className="text-2xl font-bold mb-2">Open Mic Tracker</h1>
         <p className="text-gray-600">A community-maintained list of open mics</p>
 
         <div className="mt-4 flex justify-between items-center">
-          {!user ? (
-            <form onSubmit={handleLogin} className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Username"
-                value={loginForm.username}
-                onChange={(e) => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
-                className="border p-2 rounded"
-                required
-              />
-              <input
-                type="password"
-                placeholder="Password"
-                value={loginForm.password}
-                onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
-                className="border p-2 rounded"
-                required
-              />
-              <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Login</button>
-            </form>
-          ) : (
-            <div className="flex gap-2 items-center">
-              <span>Logged in as {user.username}</span>
-              <button onClick={handleLogout} className="bg-gray-300 px-3 py-1 rounded">Logout</button>
-            </div>
-          )}
-
           {user && viewMode === 'view' && (
             <button
               onClick={() => {
