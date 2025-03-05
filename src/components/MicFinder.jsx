@@ -474,7 +474,7 @@ const MicFinder = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-        <div class="flex justify-end">
+        <div className="flex justify-end">
             {!user ? (
                 <form onSubmit={handleLogin} className="flex gap-2">
                     <input
