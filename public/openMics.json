@@ -1,5 +1,15 @@
 [
     {
+        "id": "6",
+        "name": "Late Night Comedy Open Mic",
+        "contactInfo": "TODO",
+        "location": "TODO",
+        "recurrence": "Weekly on Saturday",
+        "signupInstructions": "In person, 30 minutes before the show",
+        "showTime": "23:00",
+        "startDate": "2025-03-08"
+    },
+    {
         "id": "5",
         "name": "The List with Greg Sisco",
         "contactInfo": "TODO",
