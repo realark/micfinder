@@ -471,34 +471,38 @@ const MicFinder = () => {
 
   return (
     <div className="max-w-6xl mx-auto p-4">
-        <div className="flex justify-end">
-            {!user ? (
-                <form onSubmit={handleLogin} className="flex gap-2">
-                    <input
-                        type="text"
-                        placeholder="Username"
-                        value={loginForm.username}
-                        onChange={(e) => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
-                        className="border p-2 rounded"
-                        required
-                    />
-                    <input
-                        type="password"
-                        placeholder="Password"
-                        value={loginForm.password}
-                        onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
-                        className="border p-2 rounded"
-                        required
-                    />
-                    <button type="submit" className="bg-blue-500 text-white px-4 py-2 rounded">Login</button>
-                </form>
-            ) : (
-                <div className="flex gap-2 items-center">
-                    <span>Logged in as {user.username}</span>
-                    <button onClick={handleLogout} className="bg-gray-300 px-2 py-1 rounded">[Logout]</button>
-                </div>
-            )}
-        </div>
+  <div className="absolute top-0 right-0">
+    {!user ? (
+      <form
+        onSubmit={handleLogin}
+        className="flex gap-1 items-center"
+      >
+        <input
+          type="text"
+          placeholder="Username"
+          value={loginForm.username}
+          onChange={(e) => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
+          className="border p-1 rounded text-sm w-24"
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          value={loginForm.password}
+          onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+          className="border p-1 rounded text-sm w-24"
+          required
+        />
+        <button type="submit" className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300">Login</button>
+      </form>
+    ) : (
+      <div className="flex gap-2 items-center text-sm text-gray-600">
+        <span>{user.username}</span>
+        <button onClick={handleLogout} className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300">Logout</button>
+      </div>
+    )}
+  </div>
+
       <header className="mb-6">
         <h1 className="text-2xl font-bold mb-2">Boise Standup Comedy Open Mics</h1>
         <p className="text-gray-600">A community-maintained list of open mics</p>
