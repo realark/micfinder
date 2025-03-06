@@ -109,11 +109,16 @@ const MicFinder = () => {
     setViewMode('view');
   };
 
-  // Edit an open mic
   const editOpenMic = (id) => {
     const micToEdit = openMics.find(mic => mic.id === id);
     setCurrentMic(micToEdit);
     setViewMode('edit');
+  };
+
+  const viewOpenMic = (id) => {
+    const micToView = openMics.find(mic => mic.id === id);
+    setCurrentMic(micToView);
+    setViewMode('view-mic');
   };
 
   // Delete an open mic
@@ -378,7 +383,7 @@ const MicFinder = () => {
                         <div
                           key={event.id}
                           className="text-xs p-1 my-1 bg-blue-100 rounded truncate cursor-pointer"
-                          onClick={() => editOpenMic(event.id)}
+                          onClick={() => viewOpenMic(event.id)}
                         >
                             {formatTo12Hour(event.showTime)} {event.name}
                         </div>
@@ -489,18 +494,19 @@ const MicFinder = () => {
                 </form>
             ) : (
                 <div className="flex gap-2 items-center">
-                    <span>{user.username}</span>
-                    <button onClick={handleLogout} className="bg-gray-300 px-3 py-1 rounded">[Logout]</button>
+                    <span>Logged in as {user.username}</span>
+                    <button onClick={handleLogout} className="bg-gray-300 px-2 py-1 rounded">[Logout]</button>
                 </div>
             )}
         </div>
       <header className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Open Mic Tracker</h1>
+        <h1 className="text-2xl font-bold mb-2">Boise Standup Comedy Open Mics</h1>
         <p className="text-gray-600">A community-maintained list of open mics</p>
 
       </header>
 
       {/* View toggle buttons */}
+      {viewMode === 'view' &&
       <div className="flex mb-4 gap-2">
         <div className="bg-gray-100 p-1 rounded-lg inline-flex">
           <button
@@ -516,7 +522,7 @@ const MicFinder = () => {
             List
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* Form for adding/editing open mics */}
       {(viewMode === 'add' || viewMode === 'edit') && (
@@ -613,6 +619,41 @@ const MicFinder = () => {
           </form>
         </div>
       )}
+      {(viewMode === 'view-mic') && (
+        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mb-6">
+          <div className="flex justify-between items-start mb-6">
+            <h2 className="text-2xl font-bold text-blue-600">
+              {currentMic.name}
+            </h2>
+            <button
+              onClick={() => setViewMode('view')}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              × Close
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+            <div className="flex items-start">
+              <span className="text-gray-600 font-medium w-28">Contact:</span>
+              <span>{currentMic.contactInfo}</span>
+            </div>
+            <div className="flex items-start">
+              <span className="text-gray-600 font-medium w-28">Location:</span>
+              <span>{currentMic.location}</span>
+            </div>
+            <div className="flex items-start">
+              <span className="text-gray-600 font-medium w-28">Schedule:</span>
+              <span>{currentMic.recurrence}</span>
+            </div>
+          </div>
+
+          <h3 className="text-lg font-semibold text-gray-700 mb-2">Sign-up Instructions</h3>
+          <div className="bg-gray-50 p-4 rounded border border-gray-200">
+            <p>{currentMic.signupInstructions}</p>
+          </div>
+        </div>
+      )}
 
       {/* Main content area */}
       {viewMode === 'view' && (
@@ -699,7 +740,7 @@ const MicFinder = () => {
         </>
       )}
 
-        {displayMode === 'calendar' && (
+        {viewMode === 'view' && displayMode === 'calendar' && (
           <div className="bg-gray-100 p-1 rounded-lg">
             <button
               onClick={() => setCalendarView('month')}
