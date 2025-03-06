@@ -1,5 +1,25 @@
 [
     {
+        "id": "5",
+        "name": "The List with Greg Sisco",
+        "contactInfo": "TODO",
+        "location": "TODO",
+        "recurrence": "Weekly on Thursday",
+        "signupInstructions": "TODO",
+        "showTime": "20:00",
+        "startDate": "2025-03-06"
+    },
+    {
+        "id": "4",
+        "name": "High Note Open Mic",
+        "contactInfo": "TODO",
+        "location": "TODO",
+        "recurrence": "Weekly on Wednesday",
+        "signupInstructions": "TODO",
+        "showTime": "20:00",
+        "startDate": "2025-03-05"
+    },
+    {
         "id": "3",
         "name": "The Shire Open Mic",
         "contactInfo": "TODO",
