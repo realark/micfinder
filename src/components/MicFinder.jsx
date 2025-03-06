@@ -187,18 +187,35 @@ const MicFinder = () => {
 
       // Check recurrence patterns
       const recurrence = mic.recurrence.toLowerCase();
+      const dayMap = {
+        'sunday': 0, 'sun': 0,
+        'monday': 1, 'mon': 1,
+        'tuesday': 2, 'tue': 2,
+        'wednesday': 3, 'wed': 3,
+        'thursday': 4, 'thu': 4,
+        'friday': 5, 'fri': 5,
+        'saturday': 6, 'sat': 6
+      };
 
       // Weekly recurrence
-      if (recurrence.includes('weekly')) {
-        const dayMap = {
-          'sunday': 0, 'sun': 0,
-          'monday': 1, 'mon': 1,
-          'tuesday': 2, 'tue': 2,
-          'wednesday': 3, 'wed': 3,
-          'thursday': 4, 'thu': 4,
-          'friday': 5, 'fri': 5,
-          'saturday': 6, 'sat': 6
-        };
+      if (recurrence.toLowerCase().includes('biweekly') ||
+          recurrence.toLowerCase().includes('bi-weekly') ||
+          recurrence.toLowerCase().includes('every other week')) {
+
+          // Calculate weeks difference from start date
+          const startWeek = Math.floor(startDate.getTime() / (7 * 24 * 60 * 60 * 1000));
+          const currentWeek = Math.floor(date.getTime() / (7 * 24 * 60 * 60 * 1000));
+          const weeksDifference = currentWeek - startWeek;
+
+          // Check if this is an event week (every other week)
+          if (weeksDifference % 2 === 0) {
+              for (const [dayName, dayNumber] of Object.entries(dayMap)) {
+                  if (recurrence.toLowerCase().includes(dayName) && date.getDay() === dayNumber) {
+                      return true;
+                  }
+              }
+          }
+      } else if (recurrence.includes('weekly')) {
 
         for (const [dayName, dayNumber] of Object.entries(dayMap)) {
           if (recurrence.includes(dayName) && date.getDay() === dayNumber) {
@@ -279,6 +296,26 @@ const MicFinder = () => {
     });
   };
 
+  // Format 24-hour time string to 12-hour format
+  const formatTo12Hour = (timeString) => {
+    if (!timeString) return '';
+
+    // Parse the time string (assuming format like "18:00")
+    const [hours, minutes] = timeString.split(':').map(num => parseInt(num, 10));
+
+    // Convert to 12-hour format
+    const period = hours >= 12 ? 'pm' : 'am';
+    const hours12 = hours % 12 || 12; // Convert 0 to 12 for midnight
+
+    // Format the result
+    return `${hours12}${minutes ? `:${minutes.toString().padStart(2, '0')}` : ''}${period}`;
+  };
+
+  // Sort events by showTime
+  const sortEventsByTime = (events) => {
+    return [...events].sort((a, b) => (a.showTime || '').localeCompare(b.showTime || ''));
+  };
+
   // Week view helper functions
   const getWeekDates = () => {
     const currentDay = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -331,13 +368,13 @@ const MicFinder = () => {
                   <>
                     <div className="text-right text-sm">{day}</div>
                     <div className="overflow-y-auto max-h-20">
-                      {events.map(event => (
+                        {sortEventsByTime(events).map(event => (
                         <div
                           key={event.id}
                           className="text-xs p-1 my-1 bg-blue-100 rounded truncate cursor-pointer"
                           onClick={() => editOpenMic(event.id)}
                         >
-                            {event.showTime} {event.name}
+                            {formatTo12Hour(event.showTime)} {event.name}
                         </div>
                       ))}
                     </div>
@@ -388,41 +425,7 @@ const MicFinder = () => {
               year === new Date().getFullYear();
 
             // Get events for this date
-            const events = openMics.filter(mic => {
-              // Parse the start date
-              const startDate = new Date(mic.startDate);
-
-              // Check if this is the exact date
-              if (startDate.getDate() === day &&
-                  startDate.getMonth() === month &&
-                  startDate.getFullYear() === year) {
-                return true;
-              }
-
-              // Check recurrence patterns (similar to getEventsForDate)
-              const recurrence = mic.recurrence.toLowerCase();
-
-              // Weekly recurrence
-              if (recurrence.includes('weekly')) {
-                const dayMap = {
-                  'sunday': 0, 'sun': 0,
-                  'monday': 1, 'mon': 1,
-                  'tuesday': 2, 'tue': 2,
-                  'wednesday': 3, 'wed': 3,
-                  'thursday': 4, 'thu': 4,
-                  'friday': 5, 'fri': 5,
-                  'saturday': 6, 'sat': 6
-                };
-
-                for (const [dayName, dayNumber] of Object.entries(dayMap)) {
-                  if (recurrence.includes(dayName) && date.getDay() === dayNumber) {
-                    return true;
-                  }
-                }
-              }
-
-              return false;
-            });
+            const events = day ? getEventsForDate(day) : [];
 
             return (
               <div
