@@ -648,7 +648,7 @@ const MicFinder = () => {
             </div>
             <div className="flex items-start">
               <span className="text-gray-600 font-medium w-28">Schedule:</span>
-              <span>{currentMic.recurrence}</span>
+                <span>{currentMic.recurrence} <br/>Show begins at {formatTo12Hour(currentMic.showTime)}</span>
             </div>
           </div>
 
