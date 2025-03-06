@@ -5,6 +5,7 @@ Application for managing a shared calendar of open mics. Content is maintained b
 
 ```sh
 npm run dev
+npm run dev -- --host # if you want to expose to external hosts (good for mobile phone testing)
 ```
 
 # React + Vite
