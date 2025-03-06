@@ -337,7 +337,7 @@ const MicFinder = () => {
                           className="text-xs p-1 my-1 bg-blue-100 rounded truncate cursor-pointer"
                           onClick={() => editOpenMic(event.id)}
                         >
-                          {event.name}
+                            {event.showTime} {event.name}
                         </div>
                       ))}
                     </div>
