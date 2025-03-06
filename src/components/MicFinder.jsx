@@ -489,8 +489,8 @@ const MicFinder = () => {
                 </form>
             ) : (
                 <div className="flex gap-2 items-center">
-                    <span>Logged in as {user.username}</span>
-                    <button onClick={handleLogout} className="bg-gray-300 px-3 py-1 rounded">Logout</button>
+                    <span>{user.username}</span>
+                    <button onClick={handleLogout} className="bg-gray-300 px-3 py-1 rounded">[Logout]</button>
                 </div>
             )}
         </div>
