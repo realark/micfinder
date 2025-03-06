@@ -357,11 +357,17 @@ const MicFinder = () => {
 
           {days.map((day, index) => {
             const events = day ? getEventsForDate(day) : [];
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const isToday =
+              day === new Date().getDate() &&
+              month === new Date().getMonth() &&
+              year === new Date().getFullYear();
             return (
               <div
                 key={index}
                 className={`border rounded min-h-16 p-1 ${day ? 'bg-white' : 'bg-gray-100'} ${
-                  currentDate.getDate() === day ? 'border-blue-500 border-2' : ''
+                  isToday ? 'border-blue-500 border-2' : ''
                 }`}
               >
                 {day && (
