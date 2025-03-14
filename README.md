@@ -1,22 +1,25 @@
 # Mic Finder
 Application for managing a shared calendar of open mics. Content is maintained by the shared community in the spirit of a wiki.
 
-## Quickstart
+Currently, the scope of this project is limited to the Boise open mic comedy scene. All accounts are manually added by the administrator. Since all editors of the site are known on a personal level, no moderation exists. That being said, audit trails are in place and malicious actors will have their accounts removed.
+
+Additionally, this project is architected with growth scenarios in mind. Should the project wish to expand to other groups/scenes, traditional moderation features can be added in the future.
+
+## Setup
+- Install NPM
 
 ```sh
 npm run dev
 npm run dev -- --host # if you want to expose to external hosts (good for mobile phone testing)
 ```
 
-# React + Vite
+## Deployments
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Deployments occur when a change is pushed to master.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript and enable type-aware lint rules. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+# TODO
+- Vanilla Node backend with basic routing
+- Real persistence layer
+- Database snapshot create and restore
+- Branch Protection
+- Basic CI
