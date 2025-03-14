@@ -59,9 +59,14 @@ app.delete('/mics/:id', (req, res) => {
   res.json({ status: 'ok', id });
 });
 
+// everyting else
+app.use((req, res) => {
+  res.status(404).json({ error: 'resource not found' });
+});
+
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+  res.status(500).json({ error: 'internal server error' });
 });
 
 app.listen(port, () => {
