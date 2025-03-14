@@ -28,10 +28,56 @@ const specs = swaggerJsdoc({
 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
+/**
+ * @openapi
+ * /health:
+ *   get:
+ *     summary: Check API health status
+ *     responses:
+ *       200:
+ *         description: API is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ */
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
 });
 
+/**
+ * @openapi
+ * /auth/login:
+ *   post:
+ *     summary: Authenticate a user
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Authentication successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ */
 app.post('/auth/login', (req, res) => {
   const { username, password } = req.body;
   // TODO: Add real auth later
@@ -86,21 +132,138 @@ app.get('/mics', (req, res) => {
 });
 
 
-// Create a new mic
+/**
+ * @openapi
+ * /mics:
+ *   post:
+ *     summary: Create a new open mic
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - location
+ *               - startDate
+ *             properties:
+ *               name:
+ *                 type: string
+ *               contactInfo:
+ *                 type: string
+ *               location:
+ *                 type: string
+ *               recurrence:
+ *                 type: string
+ *               signupInstructions:
+ *                 type: string
+ *               showTime:
+ *                 type: string
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       200:
+ *         description: Open mic created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 mic:
+ *                   type: object
+ */
 app.post('/mics', (req, res) => {
   const micData = req.body;
   // TODO: Add database insert
   res.json({ status: 'ok', mic: micData });
 });
 
-// Read a single mic
+/**
+ * @openapi
+ * /mics/{id}:
+ *   get:
+ *     summary: Get a specific open mic by ID
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The open mic ID
+ *     responses:
+ *       200:
+ *         description: Open mic details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 mic:
+ *                   type: object
+ *       404:
+ *         description: Open mic not found
+ */
 app.get('/mics/:id', (req, res) => {
   const { id } = req.params;
   // TODO: Add database query
   res.json({ status: 'ok', mic: { id } });
 });
 
-// Update a mic
+/**
+ * @openapi
+ * /mics/{id}:
+ *   put:
+ *     summary: Update an existing open mic
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The open mic ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               contactInfo:
+ *                 type: string
+ *               location:
+ *                 type: string
+ *               recurrence:
+ *                 type: string
+ *               signupInstructions:
+ *                 type: string
+ *               showTime:
+ *                 type: string
+ *               startDate:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       200:
+ *         description: Open mic updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 mic:
+ *                   type: object
+ *       404:
+ *         description: Open mic not found
+ */
 app.put('/mics/:id', (req, res) => {
   const { id } = req.params;
   const micData = req.body;
@@ -108,7 +271,33 @@ app.put('/mics/:id', (req, res) => {
   res.json({ status: 'ok', mic: { id, ...micData } });
 });
 
-// Delete a mic
+/**
+ * @openapi
+ * /mics/{id}:
+ *   delete:
+ *     summary: Delete an open mic
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: The open mic ID
+ *     responses:
+ *       200:
+ *         description: Open mic deleted successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                 id:
+ *                   type: string
+ *       404:
+ *         description: Open mic not found
+ */
 app.delete('/mics/:id', (req, res) => {
   const { id } = req.params;
   // TODO: Add database delete
