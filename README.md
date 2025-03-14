@@ -9,8 +9,21 @@ Additionally, this project is architected with growth scenarios in mind. Should 
 - Install NPM
 
 ```sh
+cd backend
+cp .env.sample .env # then make desired changes to your .env file
+```
+
+## Local Dev
+### Frontend
+```sh
+cd frontend/
 npm run dev
 npm run dev -- --host # if you want to expose to external hosts (good for mobile phone testing)
+```
+### Backend
+```sh
+cd backend/
+npm run dev
 ```
 
 ## Deployments
