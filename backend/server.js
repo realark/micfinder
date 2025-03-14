@@ -1,5 +1,7 @@
 const express = require('express');
 const cors = require('cors');
+const swaggerJsdoc = require('swagger-jsdoc');
+const swaggerUi = require('swagger-ui-express');
 require('dotenv').config();
 
 const app = express();
@@ -7,6 +9,24 @@ const port = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+const specs = swaggerJsdoc({
+  definition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Open Mics API',
+      version: '0.0.1'
+    },
+    servers: [
+      {
+        url: `http://localhost:${port}`
+      }
+    ]
+  },
+  apis: ['./server.js']
+});
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
 
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -18,7 +38,33 @@ app.post('/auth/login', (req, res) => {
   res.json({ status: 'ok' });
 });
 
-// Get mics within date range
+/**
+ * @openapi
+ * /mics:
+ *   get:
+ *     summary: Get all open mics within a date range
+ *     parameters:
+ *       - in: query
+ *         name: start
+ *         schema:
+ *           type: string
+ *         description: Start date
+ *       - in: query
+ *         name: end
+ *         schema:
+ *           type: string
+ *         description: End date
+ *     responses:
+ *       200:
+ *         description: List of open mics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 mics:
+ *                   type: array
+ */
 app.get('/mics', (req, res) => {
   const { start, end } = req.query;
   // Load the open mics data from the JSON file
