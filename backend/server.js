@@ -21,12 +21,22 @@ app.post('/auth/login', (req, res) => {
 // Get mics within date range
 app.get('/mics', (req, res) => {
   const { start, end } = req.query;
-  // TODO: Add real database query later
-  res.json({
-    mics: [],
-    start,
-    end
-  });
+  // Load the open mics data from the JSON file
+  const fs = require('fs');
+  const path = require('path');
+
+  try {
+    const openMicsData = fs.readFileSync(path.join(__dirname, 'openMics.json'), 'utf8');
+    const mics = JSON.parse(openMicsData);
+    res.json({
+      mics,
+      start,
+      end
+    });
+  } catch (error) {
+    console.error('Error reading open mics data:', error);
+    res.status(500).json({ error: 'Failed to load open mics data' });
+  }
 });
 
 

@@ -26,20 +26,25 @@ const MicFinder = () => {
   // State for display mode (calendar or list)
   const [displayMode, setDisplayMode] = useState('calendar'); // 'calendar', 'list'
 
-  // Load data from localStorage on component mount
+  // Load data from backend on component mount
   useEffect(() => {
     const savedMics = localStorage.getItem('openMics');
     if (savedMics && JSON.parse(savedMics).length > 0) {
       setOpenMics(JSON.parse(savedMics));
     } else {
-        fetch('./openMics.json')
+        // FIXME: don't hardcode
+        fetch('http://localhost:3000/mics')
             .then(response => response.json())
             .then(data => {
-                setOpenMics(data);
-                localStorage.setItem('openMics', JSON.stringify(data));
+                if (data.mics && Array.isArray(data.mics)) {
+                    setOpenMics(data.mics);
+                    localStorage.setItem('openMics', JSON.stringify(data.mics));
+                } else {
+                    console.error('Unexpected data format from server:', data);
+                }
             })
             .catch(error => {
-                console.error('Error loading open mics data:', error);
+                console.error('Error loading open mics data from server:', error);
             });
     }
 
