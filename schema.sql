@@ -18,6 +18,7 @@ CREATE DOMAIN rrule AS VARCHAR(100) CHECK (
 
 CREATE TABLE app_user (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  account_disabled BOOLEAN default FALSE,
   email citext NOT NULL unique,
   full_name TEXT NOT NULL,
   password_hash TEXT NOT NULL
@@ -36,11 +37,11 @@ CREATE INDEX mic_start_date_idx ON mic(start_date);
 -- mic audit table and trigger
 CREATE TABLE audit_mic (
   audit_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  mic_id UUID NOT NULL REFERENCES mic(id),
+  mic_id UUID NOT NULL,
   edit_version BIGINT NOT NULL,
-  start_date DATE NOT NULL,
+  start_date DATE,
   recurrence RRULE,
-  data JSONB NOT NULL,
+  data JSONB,
   action_type VARCHAR(10) NOT NULL, -- 'INSERT', 'UPDATE', or 'DELETE'
   changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   changed_by UUID NOT NULL REFERENCES app_user(id)
@@ -50,6 +51,8 @@ CREATE INDEX audit_mic_changed_by_idx ON audit_mic(changed_by);
 
 CREATE OR REPLACE FUNCTION log_mic_changes()
 RETURNS TRIGGER AS $$
+DECLARE
+    changed_by UUID;
 BEGIN
   IF (TG_OP = 'INSERT') THEN
     INSERT INTO audit_mic (
@@ -61,9 +64,6 @@ BEGIN
     );
     RETURN NEW;
   ELSIF (TG_OP = 'UPDATE') THEN
-    -- Increment the edit version
-    NEW.edit_version := OLD.edit_version + 1;
-
     INSERT INTO audit_mic (
       mic_id, edit_version, start_date, recurrence, data,
       action_type, changed_by
@@ -73,12 +73,15 @@ BEGIN
     );
     RETURN NEW;
   ELSIF (TG_OP = 'DELETE') THEN
+    changed_by := current_setting('app.user_id', true)::uuid;
+    IF changed_by is null THEN
+      RAISE EXCEPTION 'app.user_id session local var must be set for DELETE ops';
+    END IF;
     INSERT INTO audit_mic (
       mic_id, edit_version, start_date, recurrence, data,
       action_type, changed_by
     ) VALUES (
-      OLD.id, OLD.edit_version, OLD.start_date, OLD.recurrence, OLD.data,
-      'DELETE', OLD.last_edited_by
+      OLD.id, old.edit_version + 1, null, null, null, 'DELETE', changed_by
     );
     RETURN OLD;
   END IF;
@@ -86,7 +89,26 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create the trigger on the mic table
 CREATE TRIGGER mic_audit_trigger
 AFTER INSERT OR UPDATE OR DELETE ON mic
 FOR EACH ROW EXECUTE FUNCTION log_mic_changes();
+
+-- Create a trigger to check and increment edit_version before update
+CREATE OR REPLACE FUNCTION check_and_increment_version()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Check if the edit_version matches
+  IF NEW.edit_version != OLD.edit_version THEN
+    RAISE EXCEPTION 'Edit version mismatch. Expected %, got %', OLD.edit_version, NEW.edit_version;
+  END IF;
+
+  -- Increment the edit_version
+  NEW.edit_version := OLD.edit_version + 1;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER mic_version_check_trigger
+BEFORE UPDATE ON mic
+FOR EACH ROW EXECUTE FUNCTION check_and_increment_version();
