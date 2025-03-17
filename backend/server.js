@@ -2,10 +2,23 @@ const express = require('express');
 const cors = require('cors');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
+const { Pool } = require('pg');
 require('dotenv').config();
 
 const app = express();
 const port = process.env.PORT || 3000;
+const pool = new Pool({
+  // TODO: configure
+  host: 'localhost',
+  port: 5432,
+  user: 'openmics',
+  database: 'openmics',
+  password: 'password'
+});
+const JWT_SECRET = process.env.JWT_SECRET;
+const SALT_ROUNDS = 10
 
 app.use(cors());
 app.use(express.json());
@@ -60,10 +73,10 @@ app.get('/health', (req, res) => {
  *           schema:
  *             type: object
  *             required:
- *               - username
+ *               - email
  *               - password
  *             properties:
- *               username:
+ *               email:
  *                 type: string
  *               password:
  *                 type: string
@@ -78,10 +91,41 @@ app.get('/health', (req, res) => {
  *                 status:
  *                   type: string
  */
-app.post('/auth/login', (req, res) => {
-  const { username, password } = req.body;
-  // TODO: Add real auth later
-  res.json({ status: 'ok' });
+app.post('/auth/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const result = await pool.query(
+      'SELECT id, password_hash FROM app_user WHERE email = $1 AND NOT account_disabled',
+      [email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const user = result.rows[0];
+    const passwordValid = await bcrypt.compare(password, user.password_hash);
+
+    if (!passwordValid) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    const token = jwt.sign(
+      { userId: user.id },
+      JWT_SECRET,
+      { expiresIn: '24h' }
+    );
+
+    res.json({
+      status: 'ok',
+      token,
+      userId: user.id
+    });
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 /**
