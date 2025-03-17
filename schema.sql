@@ -18,7 +18,8 @@ CREATE DOMAIN rrule AS VARCHAR(100) CHECK (
 
 CREATE TABLE app_user (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  account_disabled BOOLEAN default FALSE,
+  account_disabled BOOLEAN NOT NULL DEFAULT FALSE,
+  password_reset_required BOOLEAN NOT NULL DEFAULT FALSE,
   email citext NOT NULL unique,
   full_name TEXT NOT NULL,
   password_hash TEXT NOT NULL
