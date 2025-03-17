@@ -25,6 +25,8 @@ const MicFinder = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   // State for display mode (calendar or list)
   const [displayMode, setDisplayMode] = useState('calendar'); // 'calendar', 'list'
+  // State for displaying login status
+  const [loginError, setLoginError] = useState('');
 
   // Load data from backend on component mount
   useEffect(() => {
@@ -63,6 +65,7 @@ const MicFinder = () => {
   // Login handler
   const handleLogin = async (e) => {
     e.preventDefault();
+    setLoginError(''); // Clear any previous errors
 
     try {
       const response = await fetch('http://localhost:3000/auth/login', {
@@ -71,33 +74,28 @@ const MicFinder = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: loginForm.username, // Note: your form uses 'username' but backend expects 'email'
+          email: loginForm.username,
           password: loginForm.password
         })
       });
 
       if (!response.ok) {
-        throw new Error('Login failed');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Login failed');
       }
 
       const data = await response.json();
-
-      // Store token in localStorage
       localStorage.setItem('authToken', data.token);
-
-      // Update user state
       const newUser = {
         id: data.userId,
         username: loginForm.username
       };
       setUser(newUser);
       localStorage.setItem('currentUser', JSON.stringify(newUser));
-
-      // Clear form
       setLoginForm({ username: '', password: '' });
     } catch (error) {
       console.error('Login error:', error);
-      // TODO: Show error to user
+      setLoginError(error.message);
     }
   };
 
@@ -529,7 +527,12 @@ const MicFinder = () => {
           className="border p-1 rounded text-sm w-24"
           required
         />
-        <button type="submit" className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300">Login</button>
+        <button type="submit" className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300">
+          Login
+        </button>
+        {loginError && (
+          <span className="text-red-500 text-sm ml-2">{loginError}</span>
+        )}
       </form>
     ) : (
       <div className="flex gap-2 items-center text-sm text-gray-600">
