@@ -27,7 +27,7 @@ const specs = swaggerJsdoc({
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'Open Mics API',
+      title: 'micfinder API',
       version: '0.0.1'
     },
     servers: [
@@ -174,7 +174,6 @@ app.get('/mics', (req, res) => {
     res.status(500).json({ error: 'Failed to load open mics data' });
   }
 });
-
 
 /**
  * @openapi
