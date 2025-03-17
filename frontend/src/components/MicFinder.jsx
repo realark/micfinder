@@ -61,13 +61,44 @@ const MicFinder = () => {
   }, [openMics]);
 
   // Login handler
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    // Simple login (in a real app, this would use authentication)
-    const newUser = { username: loginForm.username };
-    setUser(newUser);
-    localStorage.setItem('currentUser', JSON.stringify(newUser));
-    setLoginForm({ username: '', password: '' });
+
+    try {
+      const response = await fetch('http://localhost:3000/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: loginForm.username, // Note: your form uses 'username' but backend expects 'email'
+          password: loginForm.password
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Login failed');
+      }
+
+      const data = await response.json();
+
+      // Store token in localStorage
+      localStorage.setItem('authToken', data.token);
+
+      // Update user state
+      const newUser = {
+        id: data.userId,
+        username: loginForm.username
+      };
+      setUser(newUser);
+      localStorage.setItem('currentUser', JSON.stringify(newUser));
+
+      // Clear form
+      setLoginForm({ username: '', password: '' });
+    } catch (error) {
+      console.error('Login error:', error);
+      // TODO: Show error to user
+    }
   };
 
   // Logout handler
