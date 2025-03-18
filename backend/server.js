@@ -14,7 +14,8 @@ const pool = new Pool({
   port: process.env.PG_PORT,
   user: process.env.PG_USER,
   database: process.env.PG_DATABASE,
-  password: process.env.PG_PASSWORD
+  password: process.env.PG_PASSWORD,
+  ssl: process.env.PG_SSL === 'true',
 });
 const JWT_SECRET = process.env.JWT_SECRET;
 const SALT_ROUNDS = 10
