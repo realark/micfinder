@@ -28,8 +28,6 @@ CREATE TABLE app_user (
 CREATE TABLE mic (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   edit_version BIGINT NOT NULL DEFAULT 0,
-  start_date DATE NOT NULL,
-  recurrence RRULE,
   data JSONB NOT NULL,
   last_edited_by UUID NOT NULL REFERENCES app_user(id)
 );
