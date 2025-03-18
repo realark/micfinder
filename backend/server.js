@@ -18,7 +18,6 @@ const pool = new Pool({
   ssl: process.env.PG_SSL === 'true',
 });
 const JWT_SECRET = process.env.JWT_SECRET;
-const SALT_ROUNDS = 10
 
 app.use(cors({
   origin: process.env.CORS_DISABLE === 'true'
@@ -45,6 +44,21 @@ const specs = swaggerJsdoc({
     servers: [
       {
         url: process.env.VITE_MICFINDER_API_URL
+      }
+    ],
+    components: {
+      securitySchemes: {
+        bearerAuth: {
+          type: 'http',
+          scheme: 'bearer',
+          bearerFormat: 'JWT',
+          description: 'Enter JWT token obtained from /auth/login endpoint'
+        }
+      }
+    },
+    security: [
+      {
+        bearerAuth: []
       }
     ]
   },
@@ -140,6 +154,18 @@ app.post('/auth/login', async (req, res) => {
   }
 });
 
+const validateMicData = (req, res, next) => {
+  const required = ['name', 'location', 'startDate'];
+  const missing = required.filter(field => !req.body[field]);
+
+  if (missing.length > 0) {
+    return res.status(400).json({
+      error: `Missing required fields: ${missing.join(', ')}`
+    });
+  }
+  next();
+};
+
 /**
  * @openapi
  * /mics:
@@ -150,12 +176,12 @@ app.post('/auth/login', async (req, res) => {
  *         name: start
  *         schema:
  *           type: string
- *         description: Start date
+ *         description: Start date, inclusive
  *       - in: query
  *         name: end
  *         schema:
  *           type: string
- *         description: End date
+ *         description: End date, inclusive
  *     responses:
  *       200:
  *         description: List of open mics
@@ -167,22 +193,39 @@ app.post('/auth/login', async (req, res) => {
  *                 mics:
  *                   type: array
  */
-app.get('/mics', (req, res) => {
+app.get('/mics', async (req, res) => {
   const { start, end } = req.query;
-  // Load the open mics data from the JSON file
-  const fs = require('fs');
-  const path = require('path');
 
   try {
-    const openMicsData = fs.readFileSync(path.join(__dirname, 'openMics.json'), 'utf8');
-    const mics = JSON.parse(openMicsData);
-    res.json({
-      mics,
-      start,
-      end
-    });
+    let query = 'SELECT id, data FROM mic';
+    const queryParams = [];
+
+    // Add date filtering if start and end dates are provided
+    if (start && end) {
+      query += ' WHERE (data->>\'startDate\')::date >= $1 AND (data->>\'startDate\')::date <= $2';
+      queryParams.push(start, end);
+    } else if (start) {
+      query += ' WHERE (data->>\'startDate\')::date >= $1';
+      queryParams.push(start);
+    } else if (end) {
+      query += ' WHERE (data->>\'startDate\')::date <= $1';
+      queryParams.push(end);
+    }
+
+    // Order by start date
+    query += ' ORDER BY (data->>\'startDate\')::date ASC';
+
+    const result = await pool.query(query, queryParams);
+
+    // Map the results to match the expected format
+    const mics = result.rows.map(row => ({
+      ...row.data,
+      id: row.id
+    }));
+
+    return res.json({ mics: mics });
   } catch (error) {
-    console.error('Error reading open mics data:', error);
+    console.error('Error fetching open mics data:', error);
     res.status(500).json({ error: 'Failed to load open mics data' });
   }
 });
@@ -192,6 +235,8 @@ app.get('/mics', (req, res) => {
  * /mics:
  *   post:
  *     summary: Create a new open mic
+ *     security:
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -230,11 +275,44 @@ app.get('/mics', (req, res) => {
  *                   type: string
  *                 mic:
  *                   type: object
+ *       401:
+ *         description: Unauthorized - invalid or missing JWT token
  */
-app.post('/mics', (req, res) => {
+app.post('/mics', validateMicData, async (req, res) => {
   const micData = req.body;
-  // TODO: Add database insert
-  res.json({ status: 'ok', mic: micData });
+
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization required' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    // Insert the new mic into the database
+    // The trigger will handle setting the ID in the JSONB data
+    const result = await pool.query(
+      'INSERT INTO mic (data, last_edited_by) VALUES ($1, $2) RETURNING id, data',
+      [micData, userId]
+    );
+
+    // Return the data from the database which now has the ID set by the trigger
+    res.json({
+      status: 'ok',
+      mic: {
+        ...result.rows[0].data,
+        id: result.rows[0].id
+      }
+    });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    console.error('Error creating open mic:', error);
+    res.status(500).json({ error: 'Failed to create open mic' });
+  }
 });
 
 /**
@@ -264,10 +342,26 @@ app.post('/mics', (req, res) => {
  *       404:
  *         description: Open mic not found
  */
-app.get('/mics/:id', (req, res) => {
+app.get('/mics/:id', async (req, res) => {
   const { id } = req.params;
-  // TODO: Add database query
-  res.json({ status: 'ok', mic: { id } });
+
+  try {
+    const result = await pool.query('SELECT id, data FROM mic WHERE id = $1', [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Open mic not found' });
+    }
+
+    const mic = {
+      ...result.rows[0].data,
+      id: result.rows[0].id
+    };
+
+    res.json({ status: 'ok', mic });
+  } catch (error) {
+    console.error('Error fetching open mic:', error);
+    res.status(500).json({ error: 'Failed to fetch open mic' });
+  }
 });
 
 /**
@@ -275,6 +369,8 @@ app.get('/mics/:id', (req, res) => {
  * /mics/{id}:
  *   put:
  *     summary: Update an existing open mic
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -316,14 +412,60 @@ app.get('/mics/:id', (req, res) => {
  *                   type: string
  *                 mic:
  *                   type: object
+ *       401:
+ *         description: Unauthorized - invalid or missing JWT token
  *       404:
  *         description: Open mic not found
  */
-app.put('/mics/:id', (req, res) => {
+app.put('/mics/:id', validateMicData, async (req, res) => {
   const { id } = req.params;
   const micData = req.body;
-  // TODO: Add database update
-  res.json({ status: 'ok', mic: { id, ...micData } });
+
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization required' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    // FIXME: require user to pass fresh edit version instead of fetching (defeats the purpose)
+    const currentMic = await pool.query(
+      'SELECT edit_version FROM mic WHERE id = $1',
+      [id]
+    );
+
+    if (currentMic.rows.length === 0) {
+      return res.status(404).json({ error: 'Open mic not found' });
+    }
+
+    const editVersion = currentMic.rows[0].edit_version;
+
+    const result = await pool.query(
+      'UPDATE mic SET data = $1, edit_version = $2, last_edited_by = $3 WHERE id = $4 RETURNING id, data',
+      [{ ...micData, id }, editVersion, userId, id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Open mic not found' });
+    }
+
+    res.json({
+      status: 'ok',
+      mic: {
+        ...result.rows[0].data,
+        id: result.rows[0].id
+      }
+    });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    console.error('Error updating open mic:', error);
+    res.status(500).json({ error: 'Failed to update open mic' });
+  }
 });
 
 /**
@@ -331,6 +473,8 @@ app.put('/mics/:id', (req, res) => {
  * /mics/{id}:
  *   delete:
  *     summary: Delete an open mic
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id
@@ -350,13 +494,52 @@ app.put('/mics/:id', (req, res) => {
  *                   type: string
  *                 id:
  *                   type: string
+ *       401:
+ *         description: Unauthorized - invalid or missing JWT token
  *       404:
  *         description: Open mic not found
  */
-app.delete('/mics/:id', (req, res) => {
+app.delete('/mics/:id', async (req, res) => {
   const { id } = req.params;
-  // TODO: Add database delete
-  res.json({ status: 'ok', id });
+
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization required' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    // FIXME: require fresh edit_version
+    const client = await pool.connect();
+    var result = null;
+    try {
+      await client.query('BEGIN');
+      // NOTE: we can't use a param to set app.user_id, but userId comes from the JWT so it's safe from injections
+      await client.query(`SET LOCAL app.user_id = '${userId}'`);
+      result = await client.query('DELETE FROM mic WHERE id = $1 RETURNING id', [id]);
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
+
+    if (result == null || result.rows.length === 0) {
+      return res.status(404).json({ error: 'Open mic not found' });
+    }
+
+    res.json({ status: 'ok', id });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    console.error('Error deleting open mic:', error);
+    res.status(500).json({ error: 'Failed to delete open mic' });
+  }
 });
 
 // everyting else
@@ -369,4 +552,8 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'internal server error' });
 });
 
-module.exports = app;
+function shutdown() {
+  return pool.end();
+}
+
+module.exports = { app, shutdown };

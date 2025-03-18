@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { RRule, RRuleSet, rrulestr } from 'rrule';
 const API_URL = import.meta.env.VITE_MICFINDER_API_URL;
 
 const MicFinder = () => {
@@ -31,24 +32,21 @@ const MicFinder = () => {
 
   // Load data from backend on component mount
   useEffect(() => {
-    const savedMics = localStorage.getItem('openMics');
-    if (savedMics && JSON.parse(savedMics).length > 0) {
-      setOpenMics(JSON.parse(savedMics));
-    } else {
-        fetch(`${API_URL}/mics`)
-            .then(response => response.json())
-            .then(data => {
-                if (data.mics && Array.isArray(data.mics)) {
-                    setOpenMics(data.mics);
-                    localStorage.setItem('openMics', JSON.stringify(data.mics));
-                } else {
-                    console.error('Unexpected data format from server:', data);
-                }
-            })
-            .catch(error => {
-                console.error('Error loading open mics data from server:', error);
-            });
-    }
+    fetch(`${API_URL}/mics`)
+      .then(response => response.json())
+      .then(data => {
+        // Make sure we're handling the data structure correctly
+        if (data.mics && Array.isArray(data.mics)) {
+          setOpenMics(data.mics);
+        } else {
+          console.error('Unexpected data format from server:', data);
+          setOpenMics([]);
+        }
+      })
+      .catch(error => {
+        console.error('Error loading open mics data from server:', error);
+        setOpenMics([]);
+      });
 
     // Check if user is logged in
     const savedUser = localStorage.getItem('currentUser');
@@ -56,11 +54,6 @@ const MicFinder = () => {
       setUser(JSON.parse(savedUser));
     }
   }, []);
-
-  // Save to localStorage whenever openMics changes
-  useEffect(() => {
-    localStorage.setItem('openMics', JSON.stringify(openMics));
-  }, [openMics]);
 
   // Login handler
   const handleLogin = async (e) => {
@@ -113,52 +106,164 @@ const MicFinder = () => {
   };
 
   // Handle form submission
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (viewMode === 'add') {
-      // Add new open mic
-      const newMic = {
-        ...currentMic,
-        id: Date.now().toString()
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken) {
+        alert('You must be logged in to perform this action');
+        return;
+      }
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${authToken}`
       };
-      setOpenMics(prev => [...prev, newMic]);
-    } else if (viewMode === 'edit') {
-      // Update existing open mic
-      setOpenMics(prev => prev.map(mic =>
-        mic.id === currentMic.id ? currentMic : mic
-      ));
+
+      if (viewMode === 'add') {
+        // Add new open mic via API
+        const response = await fetch(`${API_URL}/mics`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(currentMic)
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to create open mic');
+        }
+
+        const result = await response.json();
+
+        // Update local state with the new mic from the server
+        setOpenMics(prev => [...prev, result.mic]);
+      } else if (viewMode === 'edit') {
+        // Update existing open mic via API
+        const response = await fetch(`${API_URL}/mics/${currentMic.id}`, {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify(currentMic)
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update open mic');
+        }
+
+        const result = await response.json();
+
+        // Update local state with the updated mic from the server
+        setOpenMics(prev => prev.map(mic =>
+          mic.id === result.mic.id ? result.mic : mic
+        ));
+      }
+
+      // Reset form and return to view mode
+      setCurrentMic({
+        id: '',
+        name: '',
+        contactInfo: '',
+        location: '',
+        recurrence: '',
+        signupInstructions: '',
+        startDate: ''
+      });
+      setViewMode('view');
+
+      // Refresh the list from the server
+      fetchMics();
+    } catch (error) {
+      console.error('Error saving open mic:', error);
+      alert(`Error: ${error.message}`);
     }
-
-    // Reset form and return to view mode
-    setCurrentMic({
-      id: '',
-      name: '',
-      contactInfo: '',
-      location: '',
-      recurrence: '',
-      signupInstructions: '',
-      startDate: ''
-    });
-    setViewMode('view');
   };
 
-  const editOpenMic = (id) => {
-    const micToEdit = openMics.find(mic => mic.id === id);
-    setCurrentMic(micToEdit);
-    setViewMode('edit');
+  // Function to fetch mics from the API
+  const fetchMics = () => {
+    fetch(`${API_URL}/mics`)
+      .then(response => response.json())
+      .then(data => {
+        // Make sure we're handling the data structure correctly
+        if (data.mics && Array.isArray(data.mics)) {
+          setOpenMics(data.mics);
+        } else if (Array.isArray(data)) {
+          setOpenMics(data);
+        } else {
+          console.error('Unexpected data format from server:', data);
+          setOpenMics([]);
+        }
+      })
+      .catch(error => {
+        console.error('Error loading open mics data from server:', error);
+        setOpenMics([]);
+      });
   };
 
-  const viewOpenMic = (id) => {
-    const micToView = openMics.find(mic => mic.id === id);
-    setCurrentMic(micToView);
-    setViewMode('view-mic');
+  const editOpenMic = async (id) => {
+    try {
+      // Fetch the latest version of the mic from the server
+      const response = await fetch(`${API_URL}/mics/${id}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch open mic details');
+      }
+
+      const result = await response.json();
+      setCurrentMic(result.mic);
+      setViewMode('edit');
+    } catch (error) {
+      console.error('Error fetching open mic details:', error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
+  const viewOpenMic = async (id) => {
+    try {
+      // Fetch the latest version of the mic from the server
+      const response = await fetch(`${API_URL}/mics/${id}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch open mic details');
+      }
+
+      const result = await response.json();
+      setCurrentMic(result.mic);
+      setViewMode('view-mic');
+    } catch (error) {
+      console.error('Error fetching open mic details:', error);
+      alert(`Error: ${error.message}`);
+    }
   };
 
   // Delete an open mic
-  const deleteOpenMic = (id) => {
+  const deleteOpenMic = async (id) => {
     if (window.confirm('Are you sure you want to delete this open mic?')) {
-      setOpenMics(prev => prev.filter(mic => mic.id !== id));
+      try {
+        const authToken = localStorage.getItem('authToken');
+        if (!authToken) {
+          alert('You must be logged in to perform this action');
+          return;
+        }
+
+        const response = await fetch(`${API_URL}/mics/${id}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${authToken}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to delete open mic');
+        }
+
+        // Update local state
+        setOpenMics(prev => prev.filter(mic => mic.id !== id));
+
+        // Refresh the list from the server
+        fetchMics();
+      } catch (error) {
+        console.error('Error deleting open mic:', error);
+        alert(`Error: ${error.message}`);
+      }
     }
   };
 
@@ -204,97 +309,44 @@ const MicFinder = () => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const date = new Date(year, month, day);
-    const daysInMonth = getDaysInMonth(year, month); // Add this line
+
+    // Set time to noon to avoid timezone issues
+    date.setHours(12, 0, 0, 0);
 
     // Filter events that occur on this day
     return openMics.filter(mic => {
       // Parse the start date
       const startDate = new Date(mic.startDate);
+      startDate.setHours(12, 0, 0, 0);
 
       // Make sure we're not showing events before their start date
-      const currentDateObj = new Date(year, month, day);
-      if (currentDateObj < startDate) {
+      if (date < startDate) {
         return false;
       }
 
-      // Check if this is the exact date
+      // Check if this is the exact date (one-time event)
       if (startDate.getDate() === day &&
           startDate.getMonth() === month &&
-          startDate.getFullYear() === year) {
+          startDate.getFullYear() === year &&
+          (!mic.recurrence || mic.recurrence.trim() === '')) {
         return true;
       }
 
-      // Check recurrence patterns
-      const recurrence = mic.recurrence.toLowerCase();
-      const dayMap = {
-        'sunday': 0, 'sun': 0,
-        'monday': 1, 'mon': 1,
-        'tuesday': 2, 'tue': 2,
-        'wednesday': 3, 'wed': 3,
-        'thursday': 4, 'thu': 4,
-        'friday': 5, 'fri': 5,
-        'saturday': 6, 'sat': 6
-      };
+      if (mic.recurrence) {
+        try {
+          // Parse the rrule string
+          const rule = rrulestr(mic.recurrence);
 
-      // Weekly recurrence
-      if (recurrence.toLowerCase().includes('biweekly') ||
-          recurrence.toLowerCase().includes('bi-weekly') ||
-          recurrence.toLowerCase().includes('every other week')) {
+          // Check if this date is in the recurrence set
+          const occurrences = rule.between(
+            new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0),
+            new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59),
+            true
+          );
 
-          // Calculate weeks difference from start date
-          const startWeek = Math.floor(startDate.getTime() / (7 * 24 * 60 * 60 * 1000));
-          const currentWeek = Math.floor(date.getTime() / (7 * 24 * 60 * 60 * 1000));
-          const weeksDifference = currentWeek - startWeek;
-
-          // Check if this is an event week (every other week)
-          if (weeksDifference % 2 === 0) {
-              for (const [dayName, dayNumber] of Object.entries(dayMap)) {
-                  if (recurrence.toLowerCase().includes(dayName) && date.getDay() === dayNumber) {
-                      return true;
-                  }
-              }
-          }
-      } else if (recurrence.includes('weekly')) {
-
-        for (const [dayName, dayNumber] of Object.entries(dayMap)) {
-          if (recurrence.includes(dayName) && date.getDay() === dayNumber) {
-            return true;
-          }
-        }
-      }
-
-      // Monthly recurrence - "First Sunday", "Third Tuesday", etc.
-      if (recurrence.includes('first') ||
-          recurrence.includes('second') ||
-          recurrence.includes('third') ||
-          recurrence.includes('fourth') ||
-          recurrence.includes('last')) {
-
-        const weekNumber = Math.ceil(day / 7);
-
-
-        if ((recurrence.includes('first') && weekNumber === 1) ||
-            (recurrence.includes('second') && weekNumber === 2) ||
-            (recurrence.includes('third') && weekNumber === 3) ||
-            (recurrence.includes('fourth') && weekNumber === 4) ||
-            (recurrence.includes('last') && day > daysInMonth - 7)) {
-
-          // Check if the day of week matches
-          const dayMap = {
-            'sunday': 0, 'sun': 0,
-            'monday': 1, 'mon': 1,
-            'tuesday': 2, 'tue': 2,
-            'wednesday': 3, 'wed': 3,
-            'thursday': 4, 'thu': 4,
-            'friday': 5, 'fri': 5,
-            'saturday': 6, 'sat': 6
-          };
-
-          for (const [dayName, dayNumber] of Object.entries(dayMap)) {
-            if (recurrence.includes(dayName) && date.getDay() === dayNumber) {
-              return true;
-            }
-          }
+          return occurrences.length > 0;
+        } catch (error) {
+          console.error('Error parsing rrule:', error);
         }
       }
 

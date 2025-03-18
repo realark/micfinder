@@ -1,51 +1,174 @@
 const request = require('supertest');
-const app = require('./server');
+const { GenericContainer } = require('testcontainers');
+const fs = require('fs').promises;
+const path = require('path');
+const { Client } = require('pg');
+const bcrypt = require('bcrypt');
+const testEmail = 'test@example.com'
+const testPassword = 'password'
 
 describe('API Endpoints', () => {
-  describe('GET /health', () => {
-    it('returns status ok', async () => {
-      const res = await request(app)
-        .get('/health')
-        .expect(200);
-      expect(res.body).toEqual({ status: 'ok' });
+  let container;
+  let app, shutdown;
+
+  beforeAll(async () => {
+    container = await new GenericContainer('postgres:16')
+      .withExposedPorts(5432)
+      .withEnvironment({
+        POSTGRES_USER: 'openmics',
+        POSTGRES_PASSWORD: 'password',
+        POSTGRES_DB: 'openmics'
+      })
+      .start();
+
+    const port = container.getMappedPort(5432);
+    const client = new Client({
+      host: container.getHost(),
+      port: port,
+      user: 'openmics',
+      password: 'password',
+      database: 'openmics'
     });
+    await client.connect();
+
+    const schemaSQL = await fs.readFile(path.join(__dirname, '../schema.sql'), 'utf8');
+    await client.query(schemaSQL);
+
+    // No user registration endpoint so we'll make one in the database
+    const passwordHash = await bcrypt.hash(testPassword, 10);
+    const userResult = await client.query(`
+      INSERT INTO app_user (email, full_name, password_hash)
+      VALUES ($1, 'Test User', $2)
+      RETURNING id
+    `, [testEmail, passwordHash]);
+    await client.end();
+    process.env.PG_HOST = 'localhost';
+    process.env.PG_PORT = port;
+    process.env.PG_USER = "openmics";
+    process.env.PG_DATABASE = "openmics";
+    process.env.PG_PASSWORD = "password";
+    process.env.PG_SSL = false;
+    ({ app, shutdown } = require('./server'));
+  }, 60000); // long timeout for container startup
+
+  afterAll(async () => {
+    await shutdown();
+    if (container) {
+      await container.stop();
+    }
   });
 
-  describe('POST /auth/login', () => {
+  it('healthcheck', async () => {
+    const res = await request(app)
+      .get('/health')
+      .expect(200);
+    expect(res.body).toEqual({ status: 'ok' });
+  });
+
+  describe('login', () => {
+    it('rejects invalid credentials', async () => {
+      await request(app)
+        .post('/auth/login')
+        .send({ email: testEmail, password: 'wrongpassword' })
+        .expect(401);
+      await request(app)
+        .post('/auth/login')
+        .send({ email: 'bogus@wrong.com', password: testPassword })
+        .expect(401);
+    });
+
     it('accepts valid credentials', async () => {
       const res = await request(app)
         .post('/auth/login')
-        .send({ username: 'test', password: 'test' })
+        .send({ email: testEmail, password: testPassword })
         .expect(200);
-      expect(res.body.status).toBe('ok');
+
+      expect(res.body).toHaveProperty('token');
     });
   });
 
-  describe('GET /mics', () => {
-    it('returns mics within date range', async () => {
-      const res = await request(app)
-        .get('/mics')
-        .query({ start: '2025-01-01', end: '2025-02-01' })
-        .expect(200);
-      expect(res.body).toHaveProperty('mics');
-      expect(Array.isArray(res.body.mics)).toBe(true);
-    });
-  });
-
-  describe('CRUD /mics', () => {
-    it('creates a new mic', async () => {
-      const micData = { name: 'Test Mic', date: '2025-01-01' };
-      const res = await request(app)
+  // Doing all CRUD inside a single test for convenience.
+  // TODO: factor out if this grows more complex
+  it('mic CRUD', async () => {
+    const micData = {
+      name: 'Test Open Mic',
+      location: 'Test Venue',
+      startDate: '20250101',
+      contactInfo: 'test@venue.com',
+      recurrence: 'FREQ=WEEKLY;BYDAY=MO',
+      showTime: '19:00',
+      signupTime: '18:30',
+      description: 'A test open mic'
+    };
+    const authToken = (await request(app)
+      .post('/auth/login')
+      .send({ email: testEmail, password: testPassword })
+      .expect(200))
+      .body.token;
+    let createdMicId
+    { // C
+      await request(app)
+          .post('/mics')
+          .set('Authorization', `Bearer badtoken`)
+          .send(micData)
+          .expect(401);
+      const createRes = await request(app)
         .post('/mics')
+        .set('Authorization', `Bearer ${authToken}`)
         .send(micData)
         .expect(200);
-      expect(res.body.mic).toMatchObject(micData);
-    });
-
-    // it('returns 404 for non-existent mic', async () => {
-    //   await request(app)
-    //     .get('/mics/999999')
-    //     .expect(404);
-    // });
+      expect(createRes.body.mic).toMatchObject(micData);
+      createdMicId = createRes.body.mic.id;
+    }
+    { // R
+      const allMicsRes = await request(app)
+        .get('/mics')
+        .expect(200);
+      expect(allMicsRes.body).toHaveProperty('mics');
+      expect(Array.isArray(allMicsRes.body.mics)).toBe(true);
+      expect(allMicsRes.body.mics.length).toBeGreaterThan(0);
+      const specificMicRes = await request(app)
+        .get(`/mics/${createdMicId}`)
+        .expect(200);
+      expect(specificMicRes.body.mic.name).toBe('Test Open Mic');
+      // non-existant mic should 404
+      await request(app)
+        .get('/mics/' + crypto.randomUUID())
+        .expect(404);
+    }
+    { // U
+      const updatedData = {
+        name: 'Updated Open Mic',
+        location: 'Updated Venue',
+        startDate: '20240301',
+        contactInfo: 'updated@venue.com'
+      };
+      await request(app)
+        .put(`/mics/${createdMicId}`)
+        .set('Authorization', `Bearer badtoken`)
+        .send(updatedData)
+        .expect(401);
+      const res = await request(app)
+        .put(`/mics/${createdMicId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(updatedData)
+        .expect(200);
+      expect(res.body.mic.name).toBe('Updated Open Mic');
+      expect(res.body.mic.location).toBe('Updated Venue');
+    }
+    { // D
+      await request(app)
+        .delete(`/mics/${createdMicId}`)
+        .set('Authorization', `Bearer badtoken`)
+        .expect(401);
+      await request(app)
+        .delete(`/mics/${createdMicId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(200);
+      // Verify it's deleted
+      await request(app)
+        .get(`/mics/${createdMicId}`)
+        .expect(404);
+    }
   });
 });
