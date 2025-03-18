@@ -24,9 +24,9 @@ app.use(cors({
   origin: process.env.CORS_DISABLE === 'true'
       ? true
       : [
-        'https://micfinder.org/',
-        'https://www.micfinder.org/',
-        'https://boise.micfinder.org/',
+        'https://micfinder.org',
+        'https://www.micfinder.org',
+        'https://boise.micfinder.org',
         'https://micfinder-frontend.onrender.com',
         'https://micfinder-backend.onrender.com'
       ],
