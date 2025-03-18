@@ -19,7 +19,16 @@ const pool = new Pool({
 const JWT_SECRET = process.env.JWT_SECRET;
 const SALT_ROUNDS = 10
 
-app.use(cors());
+app.use(cors({
+  origin: [
+    'https://micfinder.org/',
+    'https://www.micfinder.org/',
+    'https://boise.micfinder.org/',
+    'https://micfinder-frontend.onrender.com',
+    'https://micfinder-backend.onrender.com'
+  ],
+  credentials: true
+}));
 app.use(express.json());
 
 const specs = swaggerJsdoc({
