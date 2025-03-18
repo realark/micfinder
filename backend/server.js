@@ -43,7 +43,7 @@ const specs = swaggerJsdoc({
     },
     servers: [
       {
-        url: `http://localhost:${port}`
+        url: process.env.VITE_MICFINDER_API_URL
       }
     ]
   },
