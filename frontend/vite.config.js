@@ -8,4 +8,5 @@ export default defineConfig({
         react(),
         tailwindcss(),
     ],
+    envDir: '..' // Look for env files in the repo root
 })

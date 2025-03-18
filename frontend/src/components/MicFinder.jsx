@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+const API_URL = import.meta.env.VITE_MICFINDER_API_URL;
 
 const MicFinder = () => {
   // State for all open mics
@@ -34,8 +35,7 @@ const MicFinder = () => {
     if (savedMics && JSON.parse(savedMics).length > 0) {
       setOpenMics(JSON.parse(savedMics));
     } else {
-        // FIXME: don't hardcode
-        fetch('http://localhost:3000/mics')
+        fetch(`${API_URL}/mics`)
             .then(response => response.json())
             .then(data => {
                 if (data.mics && Array.isArray(data.mics)) {
@@ -68,7 +68,7 @@ const MicFinder = () => {
     setLoginError(''); // Clear any previous errors
 
     try {
-      const response = await fetch('http://localhost:3000/auth/login', {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

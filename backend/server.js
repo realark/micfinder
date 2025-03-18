@@ -1,3 +1,4 @@
+require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
 const swaggerJsdoc = require('swagger-jsdoc');
@@ -5,17 +6,15 @@ const swaggerUi = require('swagger-ui-express');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const { Pool } = require('pg');
-require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT;
 const pool = new Pool({
-  // TODO: configure
-  host: 'localhost',
-  port: 5432,
-  user: 'openmics',
-  database: 'openmics',
-  password: 'password'
+  host: process.env.PG_HOST,
+  port: process.env.PG_PORT,
+  user: process.env.PG_USER,
+  database: process.env.PG_DATABASE,
+  password: process.env.PG_PASSWORD
 });
 const JWT_SECRET = process.env.JWT_SECRET;
 const SALT_ROUNDS = 10
