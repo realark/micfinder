@@ -155,12 +155,29 @@ app.post('/auth/login', async (req, res) => {
 });
 
 const validateMicData = (req, res, next) => {
-  const required = ['name', 'location', 'startDate'];
+  const required = [
+    'name',
+    'location',
+    'startDate',
+    'showTime'
+  ];
+  const all_fields = required + [
+    'id', // all mics have an ID, but on create it will be undefined
+    'contactInfo',
+    'recurrence',
+    'signupInstructions'
+  ];
   const missing = required.filter(field => !req.body[field]);
 
   if (missing.length > 0) {
     return res.status(400).json({
       error: `Missing required fields: ${missing.join(', ')}`
+    });
+  }
+  const unknown = Object.keys(req.body).filter(field => !all_fields.includes(field));
+  if (unknown.length > 0) {
+    return res.status(400).json({
+      error: `Unknown fields not allowed: ${unknown.join(', ')}`
     });
   }
   next();

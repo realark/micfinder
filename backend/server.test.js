@@ -97,8 +97,6 @@ describe('API Endpoints', () => {
       contactInfo: 'test@venue.com',
       recurrence: 'FREQ=WEEKLY;BYDAY=MO',
       showTime: '19:00',
-      signupTime: '18:30',
-      description: 'A test open mic'
     };
     const authToken = (await request(app)
       .post('/auth/login')
@@ -141,6 +139,7 @@ describe('API Endpoints', () => {
         name: 'Updated Open Mic',
         location: 'Updated Venue',
         startDate: '20240301',
+        showTime: '19:30',
         contactInfo: 'updated@venue.com'
       };
       await request(app)
@@ -155,6 +154,18 @@ describe('API Endpoints', () => {
         .expect(200);
       expect(res.body.mic.name).toBe('Updated Open Mic');
       expect(res.body.mic.location).toBe('Updated Venue');
+      // missing required field
+      await request(app)
+        .put(`/mics/${createdMicId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ ...updatedData, location: undefined })
+        .expect(400);
+      // Add extra field
+      await request(app)
+        .put(`/mics/${createdMicId}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ ...updatedData, anextrafield: "not allowed" })
+        .expect(400);
     }
     { // D
       await request(app)
