@@ -1,8 +1,9 @@
 MVP:
 - [ ] Make moble rendering non-fugly
+- [ ] password reset page
 
 NEXT:
-- [ ] password reset flow
+- [ ] trigger password reset page via email (instead of manual admin)
   - this will be annoying
 
 If App Scope Grows:
