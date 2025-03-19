@@ -13,7 +13,8 @@ const MicFinder = () => {
     location: '',
     recurrence: '',
     signupInstructions: '',
-    startDate: ''
+    startDate: '',
+    showTime: ''
   });
   // State for user
   const [user, setUser] = useState(null);
@@ -121,12 +122,17 @@ const MicFinder = () => {
         'Authorization': `Bearer ${authToken}`
       };
 
+      // Filter out empty string fields
+      const micDataToSend = Object.fromEntries(
+        Object.entries(currentMic).filter(([_, value]) => value !== '')
+      );
+
       if (viewMode === 'add') {
         // Add new open mic via API
         const response = await fetch(`${API_URL}/mics`, {
           method: 'POST',
           headers,
-          body: JSON.stringify(currentMic)
+          body: JSON.stringify(micDataToSend)
         });
 
         if (!response.ok) {
@@ -142,7 +148,7 @@ const MicFinder = () => {
         const response = await fetch(`${API_URL}/mics/${currentMic.id}`, {
           method: 'PUT',
           headers,
-          body: JSON.stringify(currentMic)
+          body: JSON.stringify(micDataToSend)
         });
 
         if (!response.ok) {
@@ -165,7 +171,8 @@ const MicFinder = () => {
         location: '',
         recurrence: '',
         signupInstructions: '',
-        startDate: ''
+        startDate: '',
+        showTime: ''
       });
       setViewMode('view');
 
@@ -639,19 +646,18 @@ const MicFinder = () => {
             </div>
 
             <div>
-              <label className="block mb-1">Contact Info:</label>
+              <label className="block mb-1">Contact Info: <span className="text-gray-500 text-sm">(optional)</span></label>
               <input
                 type="text"
                 name="contactInfo"
                 value={currentMic.contactInfo}
                 onChange={handleChange}
                 className="w-full border p-2 rounded"
-                required
               />
             </div>
 
             <div>
-              <label className="block mb-1">Location:</label>
+              <label className="block mb-1">Location: <span className="text-red-500">*</span></label>
               <input
                 type="text"
                 name="location"
@@ -663,7 +669,7 @@ const MicFinder = () => {
             </div>
 
             <div>
-              <label className="block mb-1">Start Date:</label>
+              <label className="block mb-1">Start Date: <span className="text-red-500">*</span></label>
               <input
                 type="date"
                 name="startDate"
@@ -673,29 +679,39 @@ const MicFinder = () => {
                 required
               />
             </div>
+            
+            <div>
+              <label className="block mb-1">Show Time: <span className="text-red-500">*</span></label>
+              <input
+                type="time"
+                name="showTime"
+                value={currentMic.showTime}
+                onChange={handleChange}
+                className="w-full border p-2 rounded"
+                required
+              />
+            </div>
 
             <div>
-              <label className="block mb-1">Recurrence Pattern:</label>
+              <label className="block mb-1">Recurrence Pattern: <span className="text-gray-500 text-sm">(optional)</span></label>
               <input
                 type="text"
                 name="recurrence"
                 value={currentMic.recurrence}
                 onChange={handleChange}
                 className="w-full border p-2 rounded"
-                required
-                placeholder="e.g., Weekly on Mondays, 8PM"
+                placeholder="e.g., Weekly on Mondays"
               />
             </div>
 
             <div>
-              <label className="block mb-1">Sign-up Instructions:</label>
+              <label className="block mb-1">Sign-up Instructions: <span className="text-gray-500 text-sm">(optional)</span></label>
               <textarea
                 name="signupInstructions"
                 value={currentMic.signupInstructions}
                 onChange={handleChange}
                 className="w-full border p-2 rounded"
                 rows="3"
-                required
               ></textarea>
             </div>
 
@@ -774,7 +790,8 @@ const MicFinder = () => {
                   location: '',
                   recurrence: '',
                   signupInstructions: '',
-                  startDate: new Date().toISOString().split('T')[0]
+                  startDate: new Date().toISOString().split('T')[0],
+                  showTime: ''
                 });
                 setViewMode('add');
               }}
