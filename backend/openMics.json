@@ -51,11 +51,10 @@
     },
     {
         "id": "1",
-        "name": "Sweet Swede on Cole Road",
         "contactInfo": "instagram: https://www.instagram.com/hillykong/",
         "location": "Cole rd Mad Swede: 2772 S Cole Rd #140, Boise, ID 83709",
         "recurrence": "Weekly on Monday",
-        "signupInstructions": "In persion, ten minutes before show",
+        "signupInstructions": "In persion, thirty minutes before show",
         "showTime": "19:30",
         "startDate": "2025-03-03"
     }
