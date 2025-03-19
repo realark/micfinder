@@ -13,7 +13,7 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE DOMAIN rrule AS VARCHAR(100) CHECK (
   VALUE IS NULL OR
   -- TODO: I didn't actually read the spec so this regex is probably wrong
-  VALUE ~ '^FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)(;\s*(INTERVAL=\d+|BYDAY=[A-Z,]+|BYMONTH=\d+|BYMONTHDAY=[0-9,]+|BYSETPOS=\d+|UNTIL=\d+))*$'
+  VALUE ~ '^RRULE:FREQ=(DAILY|WEEKLY|MONTHLY|YEARLY)(;\s*(INTERVAL=\d+|BYDAY=[A-Z,]+|BYMONTH=\d+|BYMONTHDAY=[0-9,]+|BYSETPOS=\d+|UNTIL=\d+))*$'
 );
 
 CREATE TABLE app_user (

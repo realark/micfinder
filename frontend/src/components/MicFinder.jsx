@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { RRule, RRuleSet, rrulestr } from 'rrule';
+import RecurrenceSelector from './RecurrenceSelector';
 const API_URL = import.meta.env.VITE_MICFINDER_API_URL;
 
 const MicFinder = () => {
@@ -409,6 +410,42 @@ const MicFinder = () => {
     return `${hours12}${minutes ? `:${minutes.toString().padStart(2, '0')}` : ''}${period}`;
   };
 
+  // Format RRule to human-readable text
+  const formatRecurrence = (rruleString) => {
+    if (!rruleString) return 'One-time event';
+
+    try {
+      const rule = rrulestr(rruleString);
+      const options = rule.options;
+
+      if (options.freq === RRule.WEEKLY) {
+        const days = options.byweekday ? options.byweekday.map(day => {
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          return dayNames[day];
+        }).join(', ') : '';
+
+        const interval = options.interval || 1;
+        if (interval === 1) {
+          return `Weekly on ${days}`;
+        } else {
+          return `Every ${interval} weeks on ${days}`;
+        }
+      } else if (options.freq === RRule.MONTHLY) {
+        const interval = options.interval || 1;
+        if (interval === 1) {
+          return 'Monthly';
+        } else {
+          return `Every ${interval} months`;
+        }
+      }
+
+      return rruleString;
+    } catch (error) {
+      console.error('Error parsing rrule:', error);
+      return rruleString;
+    }
+  };
+
   // Sort events by showTime
   const sortEventsByTime = (events) => {
     return [...events].sort((a, b) => (a.showTime || '').localeCompare(b.showTime || ''));
@@ -679,7 +716,7 @@ const MicFinder = () => {
                 required
               />
             </div>
-            
+
             <div>
               <label className="block mb-1">Show Time: <span className="text-red-500">*</span></label>
               <input
@@ -693,14 +730,10 @@ const MicFinder = () => {
             </div>
 
             <div>
-              <label className="block mb-1">Recurrence Pattern: <span className="text-gray-500 text-sm">(optional)</span></label>
-              <input
-                type="text"
-                name="recurrence"
+              <label className="block mb-1">Recurrence: <span className="text-gray-500 text-sm">(optional)</span></label>
+              <RecurrenceSelector
                 value={currentMic.recurrence}
-                onChange={handleChange}
-                className="w-full border p-2 rounded"
-                placeholder="e.g., Weekly on Mondays"
+                onChange={(value) => setCurrentMic(prev => ({ ...prev, recurrence: value }))}
               />
             </div>
 
@@ -755,7 +788,7 @@ const MicFinder = () => {
             </div>
             <div className="flex items-start">
               <span className="text-gray-600 font-medium w-28">Schedule:</span>
-                <span>{currentMic.recurrence} <br/>Show begins at {formatTo12Hour(currentMic.showTime)}</span>
+                <span>{formatRecurrence(currentMic.recurrence)} <br/>Show begins at {formatTo12Hour(currentMic.showTime)}</span>
             </div>
           </div>
 
@@ -832,7 +865,7 @@ const MicFinder = () => {
                         <span className="font-medium">Location:</span> {mic.location}
                       </div>
                       <div>
-                        <span className="font-medium">When:</span> {mic.recurrence}
+                        <span className="font-medium">When:</span> {formatRecurrence(mic.recurrence)}
                       </div>
                       <div>
                         <span className="font-medium">Start Date:</span> {mic.startDate}
