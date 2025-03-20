@@ -1,6 +1,7 @@
 require('dotenv').config({ path: require('path').resolve(__dirname, '../.env') });
 const express = require('express');
 const cors = require('cors');
+const sanitizeHtml = require('sanitize-html');
 const swaggerJsdoc = require('swagger-jsdoc');
 const swaggerUi = require('swagger-ui-express');
 const bcrypt = require('bcrypt');
@@ -237,8 +238,9 @@ const validateMicData = (req, res, next) => {
     'startDate',
     'showTime'
   ];
-  const all_fields = required + [
-    'id', // all mics have an ID, but on create it will be undefined
+  const allFields = [
+    ...required,
+    'id',           // all mics have an ID, but on create it will be undefined
     'contactInfo',
     'recurrence',
     'signupInstructions'
@@ -250,12 +252,21 @@ const validateMicData = (req, res, next) => {
       error: `Missing required fields: ${missing.join(', ')}`
     });
   }
-  const unknown = Object.keys(req.body).filter(field => !all_fields.includes(field));
+  const unknown = Object.keys(req.body).filter(field => !allFields.includes(field));
   if (unknown.length > 0) {
     return res.status(400).json({
       error: `Unknown fields not allowed: ${unknown.join(', ')}`
     });
   }
+  allFields.forEach(field => {
+    if (req.body[field]) {
+      req.body[field] = sanitizeHtml(req.body[field], {
+        allowedTags: [],          // Allow no HTML tags
+        allowedAttributes: {},     // Allow no HTML attributes
+        disallowedTagsMode: 'discard'
+      });
+    }
+  });
   next();
 };
 
