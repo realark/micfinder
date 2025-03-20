@@ -3,6 +3,7 @@ import { RRule, RRuleSet, rrulestr } from 'rrule';
 import RecurrenceSelector from './RecurrenceSelector';
 import PasswordChange from './PasswordChange';
 const API_URL = import.meta.env.VITE_MICFINDER_API_URL;
+const defaultSignupInstructions = "";
 
 const MicFinder = () => {
   // State for all open mics
@@ -432,8 +433,11 @@ const MicFinder = () => {
 
       if (options.freq === RRule.WEEKLY) {
         const days = options.byweekday ? options.byweekday.map(day => {
+          // RRule uses 0=MO, 1=TU, etc. but we need 0=SU, 1=MO, etc.
+          // Convert RRule day number to our day number
+          const dayNum = (day === 6) ? 0 : day + 1;
           const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-          return dayNames[day];
+          return dayNames[dayNum];
         }).join(', ') : '';
 
         const interval = options.interval || 1;
@@ -802,32 +806,50 @@ const MicFinder = () => {
             <h2 className="text-2xl font-bold text-blue-600">
               {currentMic.name}
             </h2>
-            <button
-              onClick={() => setViewMode('view')}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              × Close
-            </button>
+            <div className="flex gap-2">
+              {user && (
+                <>
+                  <button
+                    onClick={() => editOpenMic(currentMic.id)}
+                    className="text-blue-500 hover:underline"
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => deleteOpenMic(currentMic.id)}
+                    className="text-red-500 hover:underline"
+                  >
+                    Delete
+                  </button>
+                </>
+              )}
+              <button
+                onClick={() => setViewMode('view')}
+                className="text-gray-500 hover:text-gray-700 ml-2"
+              >
+                × Close
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
             <div className="flex items-start">
-              <span className="text-gray-600 font-medium w-28">Contact:</span>
-              <span>{currentMic.contactInfo}</span>
+              <span className="text-gray-600 font-medium w-28">Show Time:</span>
+              <span>{currentMic.recurrence && formatRecurrence(currentMic.recurrence) + ","} {formatTo12Hour(currentMic.showTime)}</span>
             </div>
             <div className="flex items-start">
               <span className="text-gray-600 font-medium w-28">Location:</span>
               <span>{currentMic.location}</span>
             </div>
             <div className="flex items-start">
-              <span className="text-gray-600 font-medium w-28">Schedule:</span>
-                <span>{formatRecurrence(currentMic.recurrence)} <br/>Show begins at {formatTo12Hour(currentMic.showTime)}</span>
+              <span className="text-gray-600 font-medium w-28">Contact:</span>
+              <span>{currentMic.contactInfo}</span>
             </div>
           </div>
 
           <h3 className="text-lg font-semibold text-gray-700 mb-2">Sign-up Instructions</h3>
           <div className="bg-gray-50 p-4 rounded border border-gray-200">
-            <p>{currentMic.signupInstructions}</p>
+            <p>{currentMic.signupInstructions || defaultSignupInstructions}</p>
           </div>
         </div>
       )}
@@ -893,21 +915,32 @@ const MicFinder = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mt-2">
-                      <div>
-                        <span className="font-medium">Location:</span> {mic.location}
+                    <div className="grid grid-cols-1 md:grid-cols-1 gap-2 mt-2">
+                      <div className="flex items-start">
+                        <span className="text-gray-600 font-medium w-28">Show Time:</span>
+                        <span>{mic.recurrence && formatRecurrence(mic.recurrence) + ","} {formatTo12Hour(mic.showTime)}</span>
+                      </div>
+                      <div className="flex items-start">
+                        <span className="text-gray-600 font-medium w-28">Location:</span>
+                        <span>{mic.location}</span>
+                      </div>
+                      <div className="flex items-start">
+                        <span className="text-gray-600 font-medium w-28">Contact:</span>
+                        <span>{mic.contactInfo}</span>
+                      </div>
+                      <div className="flex items-start">
+                        <span className="text-gray-600 font-medium w-28">Start Date:</span>
+                        <span>{mic.startDate}</span>
                       </div>
                       <div>
-                        <span className="font-medium">When:</span> {formatRecurrence(mic.recurrence)}
-                      </div>
-                      <div>
-                        <span className="font-medium">Start Date:</span> {mic.startDate}
-                      </div>
-                      <div>
-                        <span className="font-medium">Contact:</span> {mic.contactInfo}
-                      </div>
-                      <div className="md:col-span-2">
-                        <span className="font-medium">How to Sign Up:</span> {mic.signupInstructions}
+                        <label className="block mb-1">Sign-up Instructions:</label>
+                        <textarea
+                          name="signupInstructions"
+                          value={currentMic.signupInstructions || defaultSignupInstructions}
+                          onChange={handleChange}
+                          className="w-full border p-2 rounded"
+                          rows="3"
+                        ></textarea>
                       </div>
                     </div>
                   </div>
