@@ -356,7 +356,9 @@ const MicFinder = () => {
       if (mic.recurrence) {
         try {
           // Parse the rrule string
-          const rule = rrulestr(mic.recurrence);
+          const rule = rrulestr(mic.recurrence, {
+            dtstart: new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 12, 0, 0)
+          });
 
           // Check if this date is in the recurrence set
           const occurrences = rule.between(
