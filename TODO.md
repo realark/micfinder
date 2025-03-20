@@ -5,16 +5,14 @@ MVP:
 - [X] password reset page
 - [X] guard against script injection
 - [ ] Make moble rendering non-fugly
+- [ ] CI and branch protection
 
-NEXT:
-- [ ] branch protection and CI
-- [ ] trigger password reset page via email (instead of manual admin)
-  - this will be annoying
-
-STRETCH:
-- [ ] views for human friendly audit logging
-- [ ] tools for db rollback/restore
-
-If App Scope Grows:
-- [ ] db migrations
-- [ ] refactor existing code into sensible modules (config, persistence test doubles, unit test helpers, unit vs integration tests, etc)
+BACKLOG
+- [ ] tech debt
+  - [ ] db migrations
+  - [ ] refactor existing code into sensible modules (config, persistence test doubles, unit test helpers, unit vs integration tests, etc)
+- [ ] ops
+  - [ ] views for human friendly audit logging
+  - [ ] tools for db rollback/restore
+- [ ] features
+- [ ] automated password reset via email
