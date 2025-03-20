@@ -154,6 +154,81 @@ app.post('/auth/login', async (req, res) => {
   }
 });
 
+/**
+ * @openapi
+ * /auth/change-password:
+ *   post:
+ *     summary: Change user password
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newPassword
+ *             properties:
+ *               newPassword:
+ *                 type: string
+ *                 description: The new password
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *       400:
+ *         description: Invalid request - missing or invalid password
+ *       401:
+ *         description: Unauthorized - invalid or missing JWT token
+ */
+app.post('/auth/change-password', async (req, res) => {
+  const { newPassword } = req.body;
+
+  // Validate the new password
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ error: 'Password must be at least 8 characters long' });
+  }
+
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader) {
+      return res.status(401).json({ error: 'Authorization required' });
+    }
+
+    const token = authHeader.split(' ')[1];
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const userId = decoded.userId;
+
+    // Hash the new password
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update the user's password in the database
+    const result = await pool.query(
+      'UPDATE app_user SET password_hash = $1 WHERE id = $2 RETURNING id',
+      [passwordHash, userId]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    res.json({ status: 'ok' });
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Invalid token' });
+    }
+    console.error('Error changing password:', error);
+    res.status(500).json({ error: 'Failed to change password' });
+  }
+});
+
 const validateMicData = (req, res, next) => {
   const required = [
     'name',

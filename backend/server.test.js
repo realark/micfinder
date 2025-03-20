@@ -85,6 +85,53 @@ describe('API Endpoints', () => {
 
       expect(res.body).toHaveProperty('token');
     });
+
+    it('password requirements', async () => {
+      const authToken = (await request(app)
+        .post('/auth/login')
+        .send({ email: testEmail, password: testPassword })
+        .expect(200))
+        .body.token;
+
+      await request(app)
+        .post('/auth/change-password')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ newPassword: 'short' })
+        .expect(400);
+    });
+
+    it('changes password successfully', async () => {
+      const newPassword = 'newpassword123';
+      // Login with original password
+      const authToken = (await request(app)
+        .post('/auth/login')
+        .send({ email: testEmail, password: testPassword })
+        .expect(200))
+        .body.token;
+      // Change password
+      await request(app)
+        .post('/auth/change-password')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ newPassword: newPassword })
+        .expect(200);
+      // Old password should no longer work
+      await request(app)
+        .post('/auth/login')
+        .send({ email: testEmail, password: testPassword })
+        .expect(401);
+      // New password should work
+      const newToken = (await request(app)
+        .post('/auth/login')
+        .send({ email: testEmail, password: newPassword })
+        .expect(200))
+        .body.token;
+      // change it back to the original password
+      const resp = await request(app)
+        .post('/auth/change-password')
+        .set('Authorization', `Bearer ${newToken}`)
+        .send({ newPassword: testPassword })
+        .expect(200);
+    });
   });
 
   // Doing all CRUD inside a single test for convenience.
@@ -95,7 +142,7 @@ describe('API Endpoints', () => {
       location: 'Test Venue',
       startDate: '20250101',
       contactInfo: 'test@venue.com',
-      recurrence: 'FREQ=WEEKLY;BYDAY=MO',
+      recurrence: 'RRULE:FREQ=WEEKLY;BYDAY=MO',
       showTime: '19:00',
     };
     const authToken = (await request(app)
