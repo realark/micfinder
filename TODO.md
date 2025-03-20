@@ -3,7 +3,7 @@ MVP:
 - [X] mic editor, allow empty non-required fields
 - [X] mic editor, friendly recurrence picker
 - [X] password reset page
-- [ ] guard against script injection
+- [X] guard against script injection
 - [ ] Make moble rendering non-fugly
 
 NEXT:

@@ -229,4 +229,43 @@ describe('API Endpoints', () => {
         .expect(404);
     }
   });
+
+  it('prevents HTML injection in mic data', async () => {
+    const authToken = (await request(app)
+      .post('/auth/login')
+      .send({ email: testEmail, password: testPassword })
+      .expect(200))
+      .body.token;
+    const maliciousMicData = {
+      name: '<script>alert("XSS")</script>Malicious Mic',
+      location: 'Venue <img src="x" onerror="alert(\'XSS\')">',
+      startDate: '20250101',
+      contactInfo: '<a href="javascript:alert(\'XSS\')">contact@example.com</a>',
+      recurrence: 'RRULE:FREQ=WEEKLY;BYDAY=MO',
+      showTime: '19:00',
+    };
+    const createRes = await request(app)
+      .post('/mics')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send(maliciousMicData)
+      .expect(200);
+    const createdMicId = createRes.body.mic.id;
+
+    // Retrieve the mic to check if HTML was sanitized
+    const getRes = await request(app)
+      .get(`/mics/${createdMicId}`)
+      .expect(200);
+    const retrievedMic = getRes.body.mic;
+    // Check that the HTML tags are either escaped or removed
+    // This test assumes the server is sanitizing the input in some way
+    expect(retrievedMic.name).not.toContain('<script>');
+    expect(retrievedMic.location).not.toContain('onerror=');
+    expect(retrievedMic.contactInfo).not.toContain('javascript:');
+
+    // Clean up
+    await request(app)
+      .delete(`/mics/${createdMicId}`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+  });
 });
