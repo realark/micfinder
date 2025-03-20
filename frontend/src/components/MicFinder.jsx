@@ -90,13 +90,13 @@ const MicFinder = () => {
         id: data.userId,
         username: loginForm.username
       };
-      
+
       // Check if password reset is required
       if (data.passwordResetRequired) {
         setPasswordResetRequired(true);
         setShowPasswordChange(true);
       }
-      
+
       setUser(newUser);
       localStorage.setItem('currentUser', JSON.stringify(newUser));
       setLoginForm({ username: '', password: '' });
@@ -482,22 +482,22 @@ const MicFinder = () => {
     const dayNames = getWeekDays();
 
     return (
-      <div className="bg-white rounded-lg shadow p-4">
-        <div className="flex justify-between items-center mb-4">
-          <button onClick={goToPreviousMonth} className="p-2 bg-gray-100 rounded">
+      <div className="bg-white rounded-lg shadow p-2 sm:p-4 w-full">
+        <div className="flex justify-between items-center mb-2 sm:mb-4">
+          <button onClick={goToPreviousMonth} className="p-1 sm:p-2 bg-gray-100 rounded w-8 h-8 flex items-center justify-center">
             &lt;
           </button>
-          <h3 className="text-lg font-semibold">
+          <h3 className="text-base sm:text-lg font-semibold">
             {getMonthName(currentDate.getMonth())} {currentDate.getFullYear()}
           </h3>
-          <button onClick={goToNextMonth} className="p-2 bg-gray-100 rounded">
+          <button onClick={goToNextMonth} className="p-1 sm:p-2 bg-gray-100 rounded w-8 h-8 flex items-center justify-center">
             &gt;
           </button>
         </div>
 
         <div className="grid grid-cols-7 gap-1">
           {dayNames.map((dayName, index) => (
-            <div key={index} className="text-center font-medium p-2">
+            <div key={index} className="text-center font-medium p-1 text-xs sm:text-sm">
               {dayName}
             </div>
           ))}
@@ -513,21 +513,21 @@ const MicFinder = () => {
             return (
               <div
                 key={index}
-                className={`border rounded min-h-16 p-1 ${day ? 'bg-white' : 'bg-gray-100'} ${
+                className={`border rounded min-h-20 p-1 ${day ? 'bg-white' : 'bg-gray-100'} ${
                   isToday ? 'border-blue-500 border-2' : ''
                 }`}
               >
                 {day && (
                   <>
-                    <div className="text-right text-sm">{day}</div>
-                    <div className="overflow-y-auto max-h-20">
+                    <div className="text-right text-xs">{day}</div>
+                    <div className="overflow-y-auto max-h-48 sm:max-h-24">
                         {sortEventsByTime(events).map(event => (
                         <div
                           key={event.id}
-                          className="text-xs p-1 my-1 bg-blue-100 rounded truncate cursor-pointer"
+                          className="text-xs p-1 my-1 bg-blue-100 rounded cursor-pointer"
                           onClick={() => viewOpenMic(event.id)}
                         >
-                            {formatTo12Hour(event.showTime)} {event.name}
+                          <div className="line-clamp-2">{event.name} {formatTo12Hour(event.showTime)}</div>
                         </div>
                       ))}
                     </div>
@@ -547,9 +547,9 @@ const MicFinder = () => {
     const dayNames = getWeekDays();
 
     return (
-      <div className="bg-white rounded-lg shadow p-4">
+      <div className="bg-white rounded-lg shadow p-2 sm:p-4 w-full">
         <div className="flex justify-between items-center mb-4">
-          <button onClick={goToPreviousWeek} className="p-2 bg-gray-100 rounded">
+          <button onClick={goToPreviousWeek} className="p-1 sm:p-2 bg-gray-100 rounded">
             &lt;
           </button>
           <h3 className="text-lg font-semibold">
@@ -562,7 +562,7 @@ const MicFinder = () => {
 
         <div className="grid grid-cols-7 gap-1">
           {dayNames.map((dayName, index) => (
-            <div key={index} className="text-center font-medium p-2">
+            <div key={index} className="text-center font-medium p-1 text-xs sm:text-sm">
               {dayName}
             </div>
           ))}
@@ -583,23 +583,23 @@ const MicFinder = () => {
             return (
               <div
                 key={index}
-                className={`border rounded min-h-32 p-2 ${
+                className={`border rounded min-h-28 sm:min-h-36 p-1 sm:p-2 ${
                   isCurrentMonth ? 'bg-white' : 'bg-gray-50'
                 } ${
                   isToday ? 'border-blue-500 border-2' : ''
                 }`}
               >
-                <div className={`text-right ${isCurrentMonth ? 'font-normal' : 'text-gray-400'}`}>
+                <div className={`text-right text-xs ${isCurrentMonth ? 'font-normal' : 'text-gray-400'}`}>
                   {day}
                 </div>
-                <div className="overflow-y-auto max-h-28">
-                  {events.map(event => (
+                <div className="overflow-y-auto max-h-48 sm:max-h-24">
+                  {sortEventsByTime(events).map(event => (
                     <div
                       key={event.id}
-                      className="text-xs p-1 my-1 bg-blue-100 rounded truncate cursor-pointer"
-                      onClick={() => editOpenMic(event.id)}
+                      className="text-xs p-1 my-1 bg-blue-100 rounded cursor-pointer"
+                      onClick={() => viewOpenMic(event.id)}
                     >
-                      {event.name}
+                      <div className="line-clamp-2">{event.name} {formatTo12Hour(event.showTime)}</div>
                     </div>
                   ))}
                 </div>
@@ -616,7 +616,7 @@ const MicFinder = () => {
     setShowPasswordChange(false);
     setPasswordResetRequired(false);
   };
-  
+
   // Handle password change cancellation
   const handlePasswordChangeCancel = () => {
     // Only allow cancellation if password reset is not required
@@ -627,7 +627,7 @@ const MicFinder = () => {
 
   return (
     <>
-    <div className="max-w-6xl mx-auto p-4">
+    <div className="max-w-full mx-auto p-2 sm:p-4">
   <div className="absolute top-0 right-0">
     {!user ? (
       <form
@@ -660,8 +660,8 @@ const MicFinder = () => {
     ) : (
       <div className="flex gap-2 items-center text-sm text-gray-600">
         <span>{user.username}</span>
-        <button 
-          onClick={() => setShowPasswordChange(true)} 
+        <button
+          onClick={() => setShowPasswordChange(true)}
           className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300"
         >
           Change Password
@@ -679,17 +679,17 @@ const MicFinder = () => {
 
       {/* View toggle buttons */}
       {viewMode === 'view' &&
-      <div className="flex mb-4 gap-2">
+      <div className="flex mb-3 gap-1 sm:gap-2">
         <div className="bg-gray-100 p-1 rounded-lg inline-flex">
           <button
             onClick={() => setDisplayMode('calendar')}
-            className={`px-3 py-1 rounded ${displayMode === 'calendar' ? 'bg-white shadow' : ''}`}
+            className={`px-2 sm:px-3 py-1 rounded text-sm ${displayMode === 'calendar' ? 'bg-white shadow' : ''}`}
           >
             Calendar
           </button>
           <button
             onClick={() => setDisplayMode('list')}
-            className={`px-3 py-1 rounded ${displayMode === 'list' ? 'bg-white shadow' : ''}`}
+            className={`px-2 sm:px-3 py-1 rounded text-sm ${displayMode === 'list' ? 'bg-white shadow' : ''}`}
           >
             List
           </button>
@@ -919,16 +919,16 @@ const MicFinder = () => {
       )}
 
         {viewMode === 'view' && displayMode === 'calendar' && (
-          <div className="bg-gray-100 p-1 rounded-lg">
+          <div className="bg-gray-100 p-1 rounded-lg inline-flex mt-2">
             <button
               onClick={() => setCalendarView('month')}
-              className={`px-3 py-1 rounded ${calendarView === 'month' ? 'bg-white shadow' : ''}`}
+              className={`px-2 sm:px-3 py-1 rounded text-sm ${calendarView === 'month' ? 'bg-white shadow' : ''}`}
             >
               Month
             </button>
             <button
               onClick={() => setCalendarView('week')}
-              className={`px-3 py-1 rounded ${calendarView === 'week' ? 'bg-white shadow' : ''}`}
+              className={`px-2 sm:px-3 py-1 rounded text-sm ${calendarView === 'week' ? 'bg-white shadow' : ''}`}
             >
               Week
             </button>
@@ -937,7 +937,7 @@ const MicFinder = () => {
     </div>
     {/* Password Change Modal */}
     {showPasswordChange && user && (
-      <PasswordChange 
+      <PasswordChange
         onPasswordChanged={handlePasswordChanged}
         onCancel={handlePasswordChangeCancel}
         token={localStorage.getItem('authToken')}
