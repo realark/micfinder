@@ -324,12 +324,20 @@ const MicFinder = () => {
   };
 
   // Get events for a specific date
-  const getEventsForDate = (day) => {
-    if (!day) return [];
+  const getEventsForDate = (dayOrDate) => {
+    if (!dayOrDate) return [];
 
-    const year = currentDate.getFullYear();
-    const month = currentDate.getMonth();
-    const date = new Date(year, month, day);
+    // Handle both day number (from month view) and Date object (from week view)
+    let date;
+    if (typeof dayOrDate === 'number') {
+      // It's a day number from month view
+      const year = currentDate.getFullYear();
+      const month = currentDate.getMonth();
+      date = new Date(year, month, dayOrDate);
+    } else {
+      // It's already a Date object from week view
+      date = new Date(dayOrDate);
+    }
 
     // Set time to noon to avoid timezone issues
     date.setHours(12, 0, 0, 0);
@@ -346,9 +354,9 @@ const MicFinder = () => {
       }
 
       // Check if this is the exact date (one-time event)
-      if (startDate.getDate() === day &&
-          startDate.getMonth() === month &&
-          startDate.getFullYear() === year &&
+      if (startDate.getDate() === date.getDate() &&
+          startDate.getMonth() === date.getMonth() &&
+          startDate.getFullYear() === date.getFullYear() &&
           (!mic.recurrence || mic.recurrence.trim() === '')) {
         return true;
       }
@@ -584,7 +592,7 @@ const MicFinder = () => {
               year === new Date().getFullYear();
 
             // Get events for this date
-            const events = day ? getEventsForDate(day) : [];
+            const events = getEventsForDate(date);
 
             return (
               <div
