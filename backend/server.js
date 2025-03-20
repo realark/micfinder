@@ -122,7 +122,7 @@ app.post('/auth/login', async (req, res) => {
 
   try {
     const result = await pool.query(
-      'SELECT id, password_hash FROM app_user WHERE email = $1 AND NOT account_disabled',
+      'SELECT id, password_hash, password_reset_required FROM app_user WHERE email = $1 AND NOT account_disabled',
       [email]
     );
 
@@ -146,7 +146,8 @@ app.post('/auth/login', async (req, res) => {
     res.json({
       status: 'ok',
       token,
-      userId: user.id
+      userId: user.id,
+      passwordResetRequired: user.password_reset_required || false
     });
   } catch (err) {
     console.error('Login error:', err);
@@ -209,9 +210,9 @@ app.post('/auth/change-password', async (req, res) => {
     // Hash the new password
     const passwordHash = await bcrypt.hash(newPassword, 10);
 
-    // Update the user's password in the database
+    // Update the user's password in the database and clear the password_reset_required flag
     const result = await pool.query(
-      'UPDATE app_user SET password_hash = $1 WHERE id = $2 RETURNING id',
+      'UPDATE app_user SET password_hash = $1, password_reset_required = false WHERE id = $2 RETURNING id',
       [passwordHash, userId]
     );
 

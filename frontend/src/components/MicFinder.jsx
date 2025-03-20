@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { RRule, RRuleSet, rrulestr } from 'rrule';
 import RecurrenceSelector from './RecurrenceSelector';
+import PasswordChange from './PasswordChange';
 const API_URL = import.meta.env.VITE_MICFINDER_API_URL;
 
 const MicFinder = () => {
@@ -31,6 +32,10 @@ const MicFinder = () => {
   const [displayMode, setDisplayMode] = useState('calendar'); // 'calendar', 'list'
   // State for displaying login status
   const [loginError, setLoginError] = useState('');
+  // State for password reset
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  // State for password reset required
+  const [passwordResetRequired, setPasswordResetRequired] = useState(false);
 
   // Load data from backend on component mount
   useEffect(() => {
@@ -85,6 +90,13 @@ const MicFinder = () => {
         id: data.userId,
         username: loginForm.username
       };
+      
+      // Check if password reset is required
+      if (data.passwordResetRequired) {
+        setPasswordResetRequired(true);
+        setShowPasswordChange(true);
+      }
+      
       setUser(newUser);
       localStorage.setItem('currentUser', JSON.stringify(newUser));
       setLoginForm({ username: '', password: '' });
@@ -599,7 +611,22 @@ const MicFinder = () => {
     );
   };
 
+  // Handle password change completion
+  const handlePasswordChanged = () => {
+    setShowPasswordChange(false);
+    setPasswordResetRequired(false);
+  };
+  
+  // Handle password change cancellation
+  const handlePasswordChangeCancel = () => {
+    // Only allow cancellation if password reset is not required
+    if (!passwordResetRequired) {
+      setShowPasswordChange(false);
+    }
+  };
+
   return (
+    <>
     <div className="max-w-6xl mx-auto p-4">
   <div className="absolute top-0 right-0">
     {!user ? (
@@ -633,6 +660,12 @@ const MicFinder = () => {
     ) : (
       <div className="flex gap-2 items-center text-sm text-gray-600">
         <span>{user.username}</span>
+        <button 
+          onClick={() => setShowPasswordChange(true)} 
+          className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300"
+        >
+          Change Password
+        </button>
         <button onClick={handleLogout} className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300">Logout</button>
       </div>
     )}
@@ -902,6 +935,15 @@ const MicFinder = () => {
           </div>
         )}
     </div>
+    {/* Password Change Modal */}
+    {showPasswordChange && user && (
+      <PasswordChange 
+        onPasswordChanged={handlePasswordChanged}
+        onCancel={handlePasswordChangeCancel}
+        token={localStorage.getItem('authToken')}
+      />
+    )}
+    </>
   );
 };
 
