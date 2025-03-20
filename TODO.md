@@ -2,9 +2,9 @@ MVP:
 - [X] mic editor, UI for req fields, start time field
 - [X] mic editor, allow empty non-required fields
 - [X] mic editor, friendly recurrence picker
-- [ ] Make moble rendering non-fugly
-- [ ] password reset page
+- [X] password reset page
 - [ ] guard against script injection
+- [ ] Make moble rendering non-fugly
 
 NEXT:
 - [ ] branch protection and CI
