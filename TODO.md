@@ -5,6 +5,8 @@ MVP:
 - [X] password reset page
 - [X] guard against script injection
 - [ ] Make moble rendering non-fugly
+- [ ] implement optimistic concurrency
+- [ ] loading animation for serverless wakeup
 - [ ] CI and branch protection
 
 BACKLOG
