@@ -4,9 +4,9 @@ MVP:
 - [X] mic editor, friendly recurrence picker
 - [X] password reset page
 - [X] guard against script injection
-- [ ] Make moble rendering non-fugly
+- [X] loading animation for serverless wakeup
 - [ ] implement optimistic concurrency
-- [ ] loading animation for serverless wakeup
+- [ ] Make moble rendering non-fugly
 - [ ] CI and branch protection
 
 BACKLOG

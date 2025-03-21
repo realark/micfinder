@@ -41,13 +41,30 @@ const MicFinder = () => {
   const [isServerLoading, setIsServerLoading] = useState(true);
   // State for server loading timeout
   const [serverLoadingTimeout, setServerLoadingTimeout] = useState(false);
+  // percentage counter for wakeup screen
+  const [loadingPercent, setLoadingPercent] = useState(0);
 
   // Check server health and load data from backend on component mount
   useEffect(() => {
     // Set a timeout to show the loading message if the server takes too long
     const timeoutId = setTimeout(() => {
       setServerLoadingTimeout(true);
-    }, 500);
+    }, 1500); // ms to wait before showing sleepy computer
+
+
+    if (isServerLoading && serverLoadingTimeout) {
+      const interval = setInterval(() => {
+        setLoadingPercent(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return Math.floor(prev + (100/60)); // increment by ~1.67% every second
+        });
+      }, 1000);
+
+      return () => clearInterval(interval); // cleanup
+    }
 
     // Check server health first
     fetch(`${API_URL}/health`)
@@ -80,7 +97,7 @@ const MicFinder = () => {
     if (savedUser) {
       setUser(JSON.parse(savedUser));
     }
-  }, []);
+  }, [isServerLoading, serverLoadingTimeout]);
 
   // Login handler
   const handleLogin = async (e) => {
@@ -318,7 +335,7 @@ const MicFinder = () => {
 
   const getMonthName = (month) => {
     const months = ['January', 'February', 'March', 'April', 'May', 'June',
-                    'July', 'August', 'September', 'October', 'November', 'December'];
+      'July', 'August', 'September', 'October', 'November', 'December'];
     return months[month];
   };
 
@@ -374,11 +391,11 @@ const MicFinder = () => {
 
       // Check if this is the exact date (one-time event)
       if (startDate.getDate() === date.getDate() &&
-          startDate.getMonth() === date.getMonth() &&
-          startDate.getFullYear() === date.getFullYear() &&
-          (!mic.recurrence || mic.recurrence.trim() === '')) {
-        return true;
-      }
+        startDate.getMonth() === date.getMonth() &&
+        startDate.getFullYear() === date.getFullYear() &&
+        (!mic.recurrence || mic.recurrence.trim() === '')) {
+          return true;
+        }
 
       if (mic.recurrence) {
         try {
@@ -541,8 +558,8 @@ const MicFinder = () => {
             const month = currentDate.getMonth();
             const isToday =
               day === new Date().getDate() &&
-              month === new Date().getMonth() &&
-              year === new Date().getFullYear();
+                month === new Date().getMonth() &&
+                year === new Date().getFullYear();
             return (
               <div
                 key={index}
@@ -554,7 +571,7 @@ const MicFinder = () => {
                   <>
                     <div className="text-right text-xs">{day}</div>
                     <div className="overflow-y-auto max-h-48 sm:max-h-24">
-                        {sortEventsByTime(events).map(event => (
+                      {sortEventsByTime(events).map(event => (
                         <div
                           key={event.id}
                           className="text-xs p-1 my-1 bg-blue-100 rounded cursor-pointer"
@@ -607,8 +624,8 @@ const MicFinder = () => {
             const isCurrentMonth = month === currentDate.getMonth();
             const isToday =
               day === new Date().getDate() &&
-              month === new Date().getMonth() &&
-              year === new Date().getFullYear();
+                month === new Date().getMonth() &&
+                year === new Date().getFullYear();
 
             // Get events for this date
             const events = getEventsForDate(date);
@@ -668,7 +685,7 @@ const MicFinder = () => {
           className="w-64 h-64 object-contain mb-6"
         />
         <h2 className="text-xl font-semibold text-center text-gray-700 mb-2">
-          Our computer was asleep! He's waking up but this can take a minute
+          Our computer was asleep! He's waking up but this can take a minute ({loadingPercent}%)
         </h2>
         <div className="mt-4">
           <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
