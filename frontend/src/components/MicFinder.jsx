@@ -37,23 +37,42 @@ const MicFinder = () => {
   const [showPasswordChange, setShowPasswordChange] = useState(false);
   // State for password reset required
   const [passwordResetRequired, setPasswordResetRequired] = useState(false);
+  // State for server loading status
+  const [isServerLoading, setIsServerLoading] = useState(true);
+  // State for server loading timeout
+  const [serverLoadingTimeout, setServerLoadingTimeout] = useState(false);
 
-  // Load data from backend on component mount
+  // Check server health and load data from backend on component mount
   useEffect(() => {
-    fetch(`${API_URL}/mics`)
-      .then(response => response.json())
-      .then(data => {
-        // Make sure we're handling the data structure correctly
-        if (data.mics && Array.isArray(data.mics)) {
-          setOpenMics(data.mics);
-        } else {
-          console.error('Unexpected data format from server:', data);
-          setOpenMics([]);
-        }
-      })
-      .catch(error => {
-        console.error('Error loading open mics data from server:', error);
-        setOpenMics([]);
+    // Set a timeout to show the loading message if the server takes too long
+    const timeoutId = setTimeout(() => {
+      setServerLoadingTimeout(true);
+    }, 500);
+
+    // Check server health first
+    fetch(`${API_URL}/health`)
+      .finally(() => {
+        // Clear the timeout if the health check completes (success or error)
+        clearTimeout(timeoutId);
+
+        // Now fetch the actual data
+        fetch(`${API_URL}/mics`)
+          .then(response => response.json())
+          .then(data => {
+            // Make sure we're handling the data structure correctly
+            if (data.mics && Array.isArray(data.mics)) {
+              setOpenMics(data.mics);
+            } else {
+              console.error('Unexpected data format from server:', data);
+              setOpenMics([]);
+            }
+            setIsServerLoading(false);
+          })
+          .catch(error => {
+            console.error('Error loading open mics data from server:', error);
+            setOpenMics([]);
+            setIsServerLoading(false);
+          });
       });
 
     // Check if user is logged in
@@ -638,6 +657,25 @@ const MicFinder = () => {
       setShowPasswordChange(false);
     }
   };
+
+  // Server loading screen
+  if (isServerLoading && serverLoadingTimeout) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-50 to-purple-50 p-4">
+        <img
+          src="/computer-brewing-coffee.jpg"
+          alt="Computer brewing coffee"
+          className="w-64 h-64 object-contain mb-6"
+        />
+        <h2 className="text-xl font-semibold text-center text-gray-700 mb-2">
+          Our computer was asleep! He's waking up but this can take a minute
+        </h2>
+        <div className="mt-4">
+          <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
