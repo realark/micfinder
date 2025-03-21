@@ -137,7 +137,7 @@ describe('API Endpoints', () => {
   // Doing all CRUD inside a single test for convenience.
   // TODO: factor out if this grows more complex
   it('mic CRUD', async () => {
-    const micData = {
+    let micData = {
       name: 'Test Open Mic',
       location: 'Test Venue',
       startDate: '20250101',
@@ -163,6 +163,7 @@ describe('API Endpoints', () => {
         .send(micData)
         .expect(200);
       expect(createRes.body.mic).toMatchObject(micData);
+      micData = createRes.body.mic
       createdMicId = createRes.body.mic.id;
     }
     { // R
@@ -183,6 +184,7 @@ describe('API Endpoints', () => {
     }
     { // U
       const updatedData = {
+        ...micData,
         name: 'Updated Open Mic',
         location: 'Updated Venue',
         startDate: '20240301',
@@ -201,6 +203,7 @@ describe('API Endpoints', () => {
         .expect(200);
       expect(res.body.mic.name).toBe('Updated Open Mic');
       expect(res.body.mic.location).toBe('Updated Venue');
+      micData = res.body.mic;
       // missing required field
       await request(app)
         .put(`/mics/${createdMicId}`)
@@ -218,10 +221,12 @@ describe('API Endpoints', () => {
       await request(app)
         .delete(`/mics/${createdMicId}`)
         .set('Authorization', `Bearer badtoken`)
+        .send({ edit_version: micData.edit_version })
         .expect(401);
       await request(app)
         .delete(`/mics/${createdMicId}`)
         .set('Authorization', `Bearer ${authToken}`)
+        .send({ edit_version: micData.edit_version })
         .expect(200);
       // Verify it's deleted
       await request(app)
@@ -266,6 +271,7 @@ describe('API Endpoints', () => {
     await request(app)
       .delete(`/mics/${createdMicId}`)
       .set('Authorization', `Bearer ${authToken}`)
+      .send({ edit_version: retrievedMic.edit_version })
       .expect(200);
   });
 });

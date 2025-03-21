@@ -241,6 +241,7 @@ const validateMicData = (req, res, next) => {
   const allFields = [
     ...required,
     'id',           // all mics have an ID, but on create it will be undefined
+    'edit_version', // same deal with edit_version
     'contactInfo',
     'recurrence',
     'signupInstructions'
@@ -301,7 +302,7 @@ app.get('/mics', async (req, res) => {
   const { start, end } = req.query;
 
   try {
-    let query = 'SELECT id, data FROM mic';
+    let query = 'SELECT data FROM mic';
     const queryParams = [];
 
     // Add date filtering if start and end dates are provided
@@ -321,11 +322,8 @@ app.get('/mics', async (req, res) => {
 
     const result = await pool.query(query, queryParams);
 
-    // Map the results to match the expected format
-    const mics = result.rows.map(row => ({
-      ...row.data,
-      id: row.id
-    }));
+    // The data already contains the id
+    const mics = result.rows.map(row => row.data);
 
     return res.json({ mics: mics });
   } catch (error) {
@@ -395,20 +393,23 @@ app.post('/mics', validateMicData, async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId;
 
+    // Set edit_version to 0 for new mics
+    const dataWithVersion = {
+      ...micData,
+      edit_version: 0
+    };
+
     // Insert the new mic into the database
     // The trigger will handle setting the ID in the JSONB data
     const result = await pool.query(
       'INSERT INTO mic (data, last_edited_by) VALUES ($1, $2) RETURNING id, data',
-      [micData, userId]
+      [dataWithVersion, userId]
     );
 
     // Return the data from the database which now has the ID set by the trigger
     res.json({
       status: 'ok',
-      mic: {
-        ...result.rows[0].data,
-        id: result.rows[0].id
-      }
+      mic: result.rows[0].data
     });
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
@@ -456,12 +457,7 @@ app.get('/mics/:id', async (req, res) => {
       return res.status(404).json({ error: 'Open mic not found' });
     }
 
-    const mic = {
-      ...result.rows[0].data,
-      id: result.rows[0].id
-    };
-
-    res.json({ status: 'ok', mic });
+    res.json({ status: 'ok', mic: result.rows[0].data });
   } catch (error) {
     console.error('Error fetching open mic:', error);
     res.status(500).json({ error: 'Failed to fetch open mic' });
@@ -489,6 +485,10 @@ app.get('/mics/:id', async (req, res) => {
  *           schema:
  *             type: object
  *             properties:
+ *               id:
+ *                 type: string
+ *               edit_version:
+ *                 type: string
  *               name:
  *                 type: string
  *               contactInfo:
@@ -535,34 +535,35 @@ app.put('/mics/:id', validateMicData, async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId;
 
-    // FIXME: require user to pass fresh edit version instead of fetching (defeats the purpose)
-    const currentMic = await pool.query(
-      'SELECT edit_version FROM mic WHERE id = $1',
-      [id]
-    );
-
-    if (currentMic.rows.length === 0) {
-      return res.status(404).json({ error: 'Open mic not found' });
+    // Ensure edit_version is present in the request
+    if (micData.edit_version === undefined) {
+      return res.status(400).json({ error: 'edit_version is required for updates' });
     }
 
-    const editVersion = currentMic.rows[0].edit_version;
+    try {
+      const result = await pool.query(
+        'UPDATE mic SET data = $1, last_edited_by = $2 WHERE id = $3 RETURNING id, data',
+        [{ ...micData, id }, userId, id]
+      );
 
-    const result = await pool.query(
-      'UPDATE mic SET data = $1, edit_version = $2, last_edited_by = $3 WHERE id = $4 RETURNING id, data',
-      [{ ...micData, id }, editVersion, userId, id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Open mic not found' });
-    }
-
-    res.json({
-      status: 'ok',
-      mic: {
-        ...result.rows[0].data,
-        id: result.rows[0].id
+      if (result.rows.length === 0) {
+        return res.status(404).json({ error: 'Open mic not found' });
       }
-    });
+
+      res.json({
+        status: 'ok',
+        mic: result.rows[0].data
+      });
+    } catch (err) {
+      // Check for the specific error message from our trigger
+      if (err.message && err.message.includes('Edit version mismatch')) {
+        return res.status(409).json({
+          error: 'Conflict: The record has been modified since you last retrieved it',
+          details: err.message
+        });
+      }
+      throw err;
+    }
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
       return res.status(401).json({ error: 'Invalid token' });
@@ -605,6 +606,7 @@ app.put('/mics/:id', validateMicData, async (req, res) => {
  */
 app.delete('/mics/:id', async (req, res) => {
   const { id } = req.params;
+  const { edit_version } = req.body;
 
   try {
     const authHeader = req.headers.authorization;
@@ -616,7 +618,28 @@ app.delete('/mics/:id', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId;
 
-    // FIXME: require fresh edit_version
+    // Check if edit_version is provided
+    if (edit_version === undefined) {
+      return res.status(400).json({ error: 'edit_version is required for deletion' });
+    }
+
+    // First, get the current data to check the edit_version
+    const getCurrentData = await pool.query('SELECT data FROM mic WHERE id = $1', [id]);
+
+    if (getCurrentData.rows.length === 0) {
+      return res.status(404).json({ error: 'Open mic not found' });
+    }
+
+    const currentData = getCurrentData.rows[0].data;
+    const currentVersion = parseInt(currentData.edit_version);
+
+    if (parseInt(edit_version) !== currentVersion) {
+      return res.status(409).json({
+        error: 'Conflict: The record has been modified since you last retrieved it',
+        details: `Expected version ${currentVersion}, got ${edit_version}`
+      });
+    }
+
     const client = await pool.connect();
     var result = null;
     try {

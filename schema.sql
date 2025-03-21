@@ -27,7 +27,6 @@ CREATE TABLE app_user (
 
 CREATE TABLE mic (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  edit_version BIGINT NOT NULL DEFAULT 0,
   data JSONB NOT NULL,
   last_edited_by UUID NOT NULL REFERENCES app_user(id)
 );
@@ -38,7 +37,6 @@ CREATE INDEX mic_data_recurrence_idx ON mic((data->>'recurrence'));
 CREATE TABLE audit_mic (
   audit_id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   mic_id UUID NOT NULL,
-  edit_version BIGINT NOT NULL,
   data JSONB,
   action_type VARCHAR(10) NOT NULL, -- 'INSERT', 'UPDATE', or 'DELETE'
   changed_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -54,20 +52,16 @@ DECLARE
 BEGIN
   IF (TG_OP = 'INSERT') THEN
     INSERT INTO audit_mic (
-      mic_id, edit_version, data,
-      action_type, changed_by
+      mic_id, data, action_type, changed_by
     ) VALUES (
-      NEW.id, NEW.edit_version, NEW.data,
-      'INSERT', NEW.last_edited_by
+      NEW.id, NEW.data, 'INSERT', NEW.last_edited_by
     );
     RETURN NEW;
   ELSIF (TG_OP = 'UPDATE') THEN
     INSERT INTO audit_mic (
-      mic_id, edit_version, data,
-      action_type, changed_by
+      mic_id, data, action_type, changed_by
     ) VALUES (
-      NEW.id, NEW.edit_version, NEW.data,
-      'UPDATE', NEW.last_edited_by
+      NEW.id, NEW.data, 'UPDATE', NEW.last_edited_by
     );
     RETURN NEW;
   ELSIF (TG_OP = 'DELETE') THEN
@@ -76,9 +70,9 @@ BEGIN
       RAISE EXCEPTION 'app.user_id session local var must be set for DELETE ops';
     END IF;
     INSERT INTO audit_mic (
-      mic_id, edit_version, data, action_type, changed_by
+      mic_id, data, action_type, changed_by
     ) VALUES (
-      OLD.id, old.edit_version + 1, null, 'DELETE', changed_by
+      OLD.id, null, 'DELETE', changed_by
     );
     RETURN OLD;
   END IF;
@@ -92,14 +86,23 @@ FOR EACH ROW EXECUTE FUNCTION log_mic_changes();
 
 CREATE OR REPLACE FUNCTION check_and_increment_version()
 RETURNS TRIGGER AS $$
+DECLARE
+  old_version BIGINT;
+  new_version BIGINT;
+  updated_data JSONB;
 BEGIN
+  -- Get the versions from the JSONB data
+  old_version := (OLD.data->>'edit_version')::BIGINT;
+  new_version := (NEW.data->>'edit_version')::BIGINT;
+
   -- Check if the edit_version matches
-  IF NEW.edit_version != OLD.edit_version THEN
-    RAISE EXCEPTION 'Edit version mismatch. Expected %, got %', OLD.edit_version, NEW.edit_version;
+  IF new_version != old_version THEN
+    RAISE EXCEPTION 'Edit version mismatch. Expected %, got %', old_version, new_version;
   END IF;
 
-  -- Increment the edit_version
-  NEW.edit_version := OLD.edit_version + 1;
+  -- Increment the edit_version in the JSONB data
+  updated_data := jsonb_set(NEW.data, '{edit_version}', to_jsonb(old_version + 1));
+  NEW.data := updated_data;
 
   RETURN NEW;
 END;
@@ -117,8 +120,14 @@ BEGIN
   -- For inserts or if id is null in data, set the id in the JSONB to match the table id
   IF TG_OP = 'INSERT' OR NEW.data->>'id' IS NULL THEN
     -- Create a new JSONB with the id from the table
-    updated_data = jsonb_set(NEW.data, '{id}', to_jsonb(NEW.id::text));
-    NEW.data = updated_data;
+    updated_data := jsonb_set(NEW.data, '{id}', to_jsonb(NEW.id::text));
+
+    -- For inserts, set edit_version to 0 if not present
+    IF TG_OP = 'INSERT' AND (NEW.data->>'edit_version' IS NULL) THEN
+      updated_data := jsonb_set(updated_data, '{edit_version}', '0');
+    END IF;
+
+    NEW.data := updated_data;
   -- For updates, check that the id in the data matches the id in the table
   ELSIF NEW.data->>'id' != NEW.id::text THEN
     RAISE EXCEPTION 'Data id (%) does not match record id (%)', NEW.data->>'id', NEW.id;
