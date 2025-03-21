@@ -877,28 +877,28 @@ const MicFinder = () => {
             <div className="space-y-4">
               <h2 className="text-xl font-semibold">Available Open Mics</h2>
 
-        <div className="mt-4 flex justify-between items-center">
-          {user && viewMode === 'view' && (
-            <button
-              onClick={() => {
-                setCurrentMic({
-                  id: '',
-                  name: '',
-                  contactInfo: '',
-                  location: '',
-                  recurrence: '',
-                  signupInstructions: '',
-                  startDate: new Date().toISOString().split('T')[0],
-                  showTime: ''
-                });
-                setViewMode('add');
-              }}
-              className="bg-green-500 text-white px-4 py-2 rounded"
-            >
-              Add New Open Mic
-            </button>
-          )}
-        </div>
+              <div className="mt-4 flex justify-between items-center">
+                {user && viewMode === 'view' && (
+                  <button
+                    onClick={() => {
+                      setCurrentMic({
+                        id: '',
+                        name: '',
+                        contactInfo: '',
+                        location: '',
+                        recurrence: '',
+                        signupInstructions: '',
+                        startDate: new Date().toISOString().split('T')[0],
+                        showTime: ''
+                      });
+                      setViewMode('add');
+                    }}
+                    className="bg-green-500 text-white px-4 py-2 rounded"
+                  >
+                    Add New Open Mic
+                  </button>
+                )}
+              </div>
 
               {openMics.length === 0 ? (
                 <p>No open mics available yet. Be the first to add one!</p>
@@ -942,15 +942,9 @@ const MicFinder = () => {
                         <span className="text-gray-600 font-medium w-28">Start Date:</span>
                         <span>{mic.startDate}</span>
                       </div>
-                      <div>
-                        <label className="block mb-1">Sign-up Instructions:</label>
-                        <textarea
-                          name="signupInstructions"
-                          value={currentMic.signupInstructions || defaultSignupInstructions}
-                          onChange={handleChange}
-                          className="w-full border p-2 rounded"
-                          rows="3"
-                        ></textarea>
+                      <h3 className="text-lg font-semibold text-gray-700 mb-2">Sign-up Instructions</h3>
+                      <div className="bg-gray-50 p-4 rounded border border-gray-200">
+                        <p>{currentMic.signupInstructions || defaultSignupInstructions}</p>
                       </div>
                     </div>
                   </div>
