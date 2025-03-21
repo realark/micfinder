@@ -999,7 +999,7 @@ const MicFinder = () => {
                       </div>
                       <h3 className="text-lg font-semibold text-gray-700 mb-2">Sign-up Instructions</h3>
                       <div className="bg-gray-50 p-4 rounded border border-gray-200">
-                        <p>{currentMic.signupInstructions || defaultSignupInstructions}</p>
+                        <p>{mic.signupInstructions || defaultSignupInstructions}</p>
                       </div>
                     </div>
                   </div>
