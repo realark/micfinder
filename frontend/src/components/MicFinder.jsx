@@ -51,7 +51,6 @@ const MicFinder = () => {
       setServerLoadingTimeout(true);
     }, 1500); // ms to wait before showing sleepy computer
 
-
     if (isServerLoading && serverLoadingTimeout) {
       const interval = setInterval(() => {
         setLoadingPercent(prev => {
@@ -68,6 +67,7 @@ const MicFinder = () => {
 
     // Check server health first
     fetch(`${API_URL}/health`)
+      .then(response => response.json())
       .finally(() => {
         // Clear the timeout if the health check completes (success or error)
         clearTimeout(timeoutId);
@@ -83,11 +83,12 @@ const MicFinder = () => {
               console.error('Unexpected data format from server:', data);
               setOpenMics([]);
             }
-            setIsServerLoading(false);
           })
           .catch(error => {
             console.error('Error loading open mics data from server:', error);
             setOpenMics([]);
+          })
+          .finally(() => {
             setIsServerLoading(false);
           });
       });
@@ -676,17 +677,20 @@ const MicFinder = () => {
   };
 
   // Server loading screen
-  if (isServerLoading && serverLoadingTimeout) {
+  if (isServerLoading) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen bg-gradient-to-b from-indigo-50 to-purple-50 p-4">
-        <img
-          src="/computer-brewing-coffee.jpg"
-          alt="Computer brewing coffee"
-          className="w-64 h-64 object-contain mb-6"
-        />
-        <h2 className="text-xl font-semibold text-center text-gray-700 mb-2">
-          Our computer was asleep! He's waking up but this can take a minute ({loadingPercent}%)
-        </h2>
+        {serverLoadingTimeout && (
+          <>
+            <img
+              src="/computer-brewing-coffee.jpg"
+              alt="Computer brewing coffee"
+              className="w-64 h-64 object-contain mb-6"/>
+            <h2 className="text-xl font-semibold text-center text-gray-700 mb-2">
+              Our computer was asleep! He's waking up but this can take a minute ({loadingPercent}%)
+            </h2>
+          </>
+        )}
         <div className="mt-4">
           <div className="w-16 h-16 border-t-4 border-blue-500 border-solid rounded-full animate-spin"></div>
         </div>
@@ -747,7 +751,7 @@ const MicFinder = () => {
       </header>
 
       {/* View toggle buttons */}
-      {viewMode === 'view' &&
+      {viewMode === 'view' && (!isServerLoading) &&
       <div className="flex mb-3 gap-1 sm:gap-2">
         <div className="bg-gray-100 p-1 rounded-lg inline-flex">
           <button
@@ -920,7 +924,7 @@ const MicFinder = () => {
       )}
 
       {/* Main content area */}
-      {viewMode === 'view' && (
+      {viewMode === 'view' && (!isServerLoading) && (
         <>
           {displayMode === 'calendar' && (
             <div>
@@ -1010,7 +1014,7 @@ const MicFinder = () => {
         </>
       )}
 
-        {viewMode === 'view' && displayMode === 'calendar' && (
+      {viewMode === 'view' && displayMode === 'calendar' && (!isServerLoading) && (
           <div className="bg-gray-100 p-1 rounded-lg inline-flex mt-2">
             <button
               onClick={() => setCalendarView('month')}
