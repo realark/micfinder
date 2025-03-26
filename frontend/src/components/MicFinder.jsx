@@ -764,49 +764,6 @@ const MicFinder = () => {
   return (
     <>
     <div className="max-w-full mx-auto p-2 sm:p-4">
-  <div className="absolute top-0 right-0">
-    {!user ? (
-      <form
-        onSubmit={handleLogin}
-        className="flex gap-1 items-center"
-      >
-        <input
-          type="text"
-          placeholder="Username"
-          value={loginForm.username}
-          onChange={(e) => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
-          className="border p-1 rounded text-sm w-24"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Password"
-          value={loginForm.password}
-          onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
-          className="border p-1 rounded text-sm w-24"
-          required
-        />
-        <button type="submit" className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300">
-          Login
-        </button>
-        {loginError && (
-          <span className="text-red-500 text-sm ml-2">{loginError}</span>
-        )}
-      </form>
-    ) : (
-      <div className="flex gap-2 items-center text-sm text-gray-600">
-        <span>{user.username}</span>
-        <button
-          onClick={() => setShowPasswordChange(true)}
-          className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300"
-        >
-          Change Password
-        </button>
-        <button onClick={handleLogout} className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300">Logout</button>
-      </div>
-    )}
-  </div>
-
       <header className="mb-2">
         <h1 className="text-xl font-bold mb-1">Boise Standup Comedy Open Mics</h1>
         <p className="text-gray-600 text-sm">A community-maintained list of open mics</p>
@@ -1101,6 +1058,49 @@ const MicFinder = () => {
         token={localStorage.getItem('authToken')}
       />
     )}
+
+      <div className="top-0 right-0">
+        {!user ? (
+          <form
+            onSubmit={handleLogin}
+            className="flex gap-1 items-center"
+          >
+            <input
+              type="text"
+              placeholder="Username"
+              value={loginForm.username}
+              onChange={(e) => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
+              className="border p-1 rounded text-sm w-24"
+              required
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={loginForm.password}
+              onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
+              className="border p-1 rounded text-sm w-24"
+              required
+            />
+            <button type="submit" className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300">
+              Login
+            </button>
+            {loginError && (
+              <span className="text-red-500 text-sm ml-2">{loginError}</span>
+            )}
+          </form>
+        ) : (
+          <div className="flex gap-2 items-center text-sm text-gray-600">
+            <span>{user.username}</span>
+            <button
+              onClick={() => setShowPasswordChange(true)}
+              className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300"
+            >
+              Change Password
+            </button>
+            <button onClick={handleLogout} className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300">Logout</button>
+          </div>
+        )}
+      </div>
     </>
   );
 };
