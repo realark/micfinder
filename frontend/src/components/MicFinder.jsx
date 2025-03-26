@@ -5,6 +5,28 @@ import PasswordChange from './PasswordChange';
 const API_URL = import.meta.env.VITE_MICFINDER_API_URL;
 const defaultSignupInstructions = "";
 
+// Function to check if JWT token is expired
+const isTokenExpired = (token) => {
+  if (!token) return true;
+
+  try {
+    // Get the payload part of the JWT (second part)
+    const payload = token.split('.')[1];
+    // Base64 decode and parse as JSON
+    const decoded = JSON.parse(atob(payload));
+
+    // Check if token has expiration claim
+    if (!decoded.exp) return false;
+
+    // Compare expiration timestamp with current time
+    // exp is in seconds, Date.now() is in milliseconds
+    return decoded.exp * 1000 < Date.now();
+  } catch (error) {
+    console.error('Error decoding JWT:', error);
+    return true; // If there's an error, consider the token expired
+  }
+};
+
 const MicFinder = () => {
   // State for all open mics
   const [openMics, setOpenMics] = useState([]);
@@ -46,6 +68,16 @@ const MicFinder = () => {
 
   // Check server health and load data from backend on component mount
   useEffect(() => {
+    // Check if token is expired
+    const authToken = localStorage.getItem('authToken');
+    if (authToken && isTokenExpired(authToken)) {
+      // Token is expired, log the user out
+      setUser(null);
+      localStorage.removeItem('currentUser');
+      localStorage.removeItem('authToken');
+      console.log('Session expired. Please log in again.');
+    }
+
     // Set a timeout to show the loading message if the server takes too long
     const timeoutId = setTimeout(() => {
       setServerLoadingTimeout(true);
@@ -168,6 +200,16 @@ const MicFinder = () => {
         return;
       }
 
+      // Check if token is expired
+      if (isTokenExpired(authToken)) {
+        setUser(null);
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('authToken');
+        alert('Your session has expired. Please log in again.');
+        setViewMode('view');
+        return;
+      }
+
       const headers = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${authToken}`
@@ -258,6 +300,17 @@ const MicFinder = () => {
 
   const editOpenMic = async (id) => {
     try {
+      // Check if token is expired before allowing edit
+      const authToken = localStorage.getItem('authToken');
+      if (authToken && isTokenExpired(authToken)) {
+        setUser(null);
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('authToken');
+        alert('Your session has expired. Please log in again.');
+        setViewMode('view');
+        return;
+      }
+
       // Fetch the latest version of the mic from the server
       const response = await fetch(`${API_URL}/mics/${id}`);
 
@@ -299,6 +352,16 @@ const MicFinder = () => {
         const authToken = localStorage.getItem('authToken');
         if (!authToken) {
           alert('You must be logged in to perform this action');
+          return;
+        }
+
+        // Check if token is expired
+        if (isTokenExpired(authToken)) {
+          setUser(null);
+          localStorage.removeItem('currentUser');
+          localStorage.removeItem('authToken');
+          alert('Your session has expired. Please log in again.');
+          setViewMode('view');
           return;
         }
 
