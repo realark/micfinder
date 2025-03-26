@@ -596,20 +596,20 @@ const MicFinder = () => {
     const dayNames = getWeekDays();
 
     return (
-      <div className="bg-white rounded-lg shadow p-2 sm:p-4 w-full">
-        <div className="flex justify-between items-center mb-2 sm:mb-4">
-          <button onClick={goToPreviousMonth} className="p-1 sm:p-2 bg-gray-100 rounded w-8 h-8 flex items-center justify-center">
+      <div className="bg-white rounded-lg shadow p-0 w-full max-w-none overflow-hidden">
+        <div className="flex justify-between items-center mb-1">
+          <button onClick={goToPreviousMonth} className="p-1 bg-gray-100 rounded w-6 h-6 flex items-center justify-center">
             &lt;
           </button>
-          <h3 className="text-base sm:text-lg font-semibold">
+          <h3 className="text-sm sm:text-lg font-semibold">
             {getMonthName(currentDate.getMonth())} {currentDate.getFullYear()}
           </h3>
-          <button onClick={goToNextMonth} className="p-1 sm:p-2 bg-gray-100 rounded w-8 h-8 flex items-center justify-center">
+          <button onClick={goToNextMonth} className="p-1 bg-gray-100 rounded w-6 h-6 flex items-center justify-center">
             &gt;
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0 sm:gap-1">
           {dayNames.map((dayName, index) => (
             <div key={index} className="text-center font-medium p-1 text-xs sm:text-sm">
               {dayName}
@@ -627,7 +627,7 @@ const MicFinder = () => {
             return (
               <div
                 key={index}
-                className={`border rounded min-h-20 p-1 ${day ? 'bg-white' : 'bg-gray-100'} ${
+                className={`border rounded min-h-14 sm:min-h-20 p-0 sm:p-1 ${day ? 'bg-white' : 'bg-gray-100'} ${
                   isToday ? 'border-blue-500 border-2' : ''
                 }`}
               >
@@ -638,7 +638,7 @@ const MicFinder = () => {
                       {sortEventsByTime(events).map(event => (
                         <div
                           key={event.id}
-                          className="text-xs p-1 my-1 bg-blue-100 rounded cursor-pointer"
+                          className="text-xs p-0.5 my-0.5 bg-blue-100 rounded cursor-pointer"
                           onClick={() => viewOpenMic(event.id)}
                         >
                           <div className="line-clamp-2">{event.name} {formatTo12Hour(event.showTime)}</div>
@@ -661,20 +661,20 @@ const MicFinder = () => {
     const dayNames = getWeekDays();
 
     return (
-      <div className="bg-white rounded-lg shadow p-2 sm:p-4 w-full">
-        <div className="flex justify-between items-center mb-4">
-          <button onClick={goToPreviousWeek} className="p-1 sm:p-2 bg-gray-100 rounded">
+      <div className="bg-white rounded-lg shadow p-0 w-full max-w-none">
+        <div className="flex justify-between items-center mb-1">
+          <button onClick={goToPreviousWeek} className="p-1 bg-gray-100 rounded w-6 h-6 flex items-center justify-center">
             &lt;
           </button>
-          <h3 className="text-lg font-semibold">
+          <h3 className="text-sm sm:text-lg font-semibold">
             Week of {weekDates[0].toLocaleDateString()} - {weekDates[6].toLocaleDateString()}
           </h3>
-          <button onClick={goToNextWeek} className="p-2 bg-gray-100 rounded">
+          <button onClick={goToNextWeek} className="p-1 bg-gray-100 rounded w-6 h-6 flex items-center justify-center">
             &gt;
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
           {dayNames.map((dayName, index) => (
             <div key={index} className="text-center font-medium p-1 text-xs sm:text-sm">
               {dayName}
@@ -697,7 +697,7 @@ const MicFinder = () => {
             return (
               <div
                 key={index}
-                className={`border rounded min-h-28 sm:min-h-36 p-1 sm:p-2 ${
+                className={`border rounded min-h-20 sm:min-h-36 p-0.5 sm:p-2 ${
                   isCurrentMonth ? 'bg-white' : 'bg-gray-50'
                 } ${
                   isToday ? 'border-blue-500 border-2' : ''
@@ -710,7 +710,7 @@ const MicFinder = () => {
                   {sortEventsByTime(events).map(event => (
                     <div
                       key={event.id}
-                      className="text-xs p-1 my-1 bg-blue-100 rounded cursor-pointer"
+                      className="text-xs p-0.5 my-0.5 bg-blue-100 rounded cursor-pointer"
                       onClick={() => viewOpenMic(event.id)}
                     >
                       <div className="line-clamp-2">{event.name} {formatTo12Hour(event.showTime)}</div>
@@ -807,10 +807,9 @@ const MicFinder = () => {
     )}
   </div>
 
-      <header className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Boise Standup Comedy Open Mics</h1>
-        <p className="text-gray-600">A community-maintained list of open mics</p>
-
+      <header className="mb-2">
+        <h1 className="text-xl font-bold mb-1">Boise Standup Comedy Open Mics</h1>
+        <p className="text-gray-600 text-sm">A community-maintained list of open mics</p>
       </header>
 
       {/* View toggle buttons */}
