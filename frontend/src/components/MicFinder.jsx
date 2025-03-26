@@ -1059,11 +1059,11 @@ const MicFinder = () => {
       />
     )}
 
-      <div className="top-0 right-0">
+      <div className="bottom-0 w-full flex justify-end mt-4">
         {!user ? (
           <form
             onSubmit={handleLogin}
-            className="flex gap-1 items-center"
+            className="flex flex-wrap gap-1 items-center"
           >
             <input
               type="text"
@@ -1089,7 +1089,7 @@ const MicFinder = () => {
             )}
           </form>
         ) : (
-          <div className="flex gap-2 items-center text-sm text-gray-600">
+          <div className="flex flex-wrap gap-2 items-center text-sm text-gray-600">
             <span>{user.username}</span>
             <button
               onClick={() => setShowPasswordChange(true)}
