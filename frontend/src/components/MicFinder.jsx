@@ -58,7 +58,7 @@ const MicFinder = () => {
             clearInterval(interval);
             return 100;
           }
-          return Math.floor(prev + (100/60)); // increment by ~1.67% every second
+          return Math.floor(prev + (100/30)); // increment up to 100% over 30 seconds
         });
       }, 1000);
 
