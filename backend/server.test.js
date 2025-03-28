@@ -6,6 +6,7 @@ const { Client } = require('pg');
 const bcrypt = require('bcrypt');
 const testEmail = 'test@example.com'
 const testPassword = 'password'
+const crypto = require('crypto');
 
 describe('API Endpoints', () => {
   let container;
@@ -42,7 +43,8 @@ describe('API Endpoints', () => {
       RETURNING id
     `, [testEmail, passwordHash]);
     await client.end();
-    process.env.PG_HOST = 'localhost';
+    process.env.JWT_SECRET="unittest";
+    process.env.PG_HOST = container.getHost();
     process.env.PG_PORT = port;
     process.env.PG_USER = "openmics";
     process.env.PG_DATABASE = "openmics";
