@@ -4,6 +4,8 @@
 -- So, most data is going to be stored de-normalized in a json blob.
 -- Should we desire a normalized db in the future it should be trivial to migrate (because the number of mics is going to be <10 and unlikely to grow larger).
 
+SET search_path TO public;
+
 CREATE EXTENSION if NOT EXISTS citext;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
