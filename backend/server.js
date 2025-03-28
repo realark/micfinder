@@ -84,8 +84,17 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs));
  *                 status:
  *                   type: string
  */
-app.get('/health', (req, res) => {
-  res.json({ status: 'ok' });
+app.get('/health', async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT 'healthcheck'",
+      []
+    );
+    res.json({ status: 'ok' });
+  } catch (err) {
+    console.error('healthcheck database error:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 /**
