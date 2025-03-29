@@ -10,6 +10,16 @@
         "startDate": "2025-03-08"
     },
     {
+        "id": "3",
+        "name": "The Frickin Funny Open Mic",
+        "contactInfo": "https://www.instagram.com/frickfoster/",
+        "location": "404 S 8th St Suite L120, Boise, ID 83702",
+        "recurrence": "Weekly on Friday",
+        "signupInstructions": "In person, 30 mins before show",
+        "showTime": "20:00",
+        "startDate": "2025-03-11"
+    },
+    {
         "id": "5",
         "name": "Pretty Good Open Mic with Max Knudson",
         "contactInfo": "https://www.instagram.com/maxknudson/",
@@ -22,22 +32,12 @@
     {
         "id": "4",
         "name": "High Note Open Mic",
-        "contactInfo": "https://www.instagram.com/reese.samuels/, https://www.instagram.com/thatf_ckingguylj/",
+        "contactInfo": "https://www.instagram.com/reese.samuels/  https://www.instagram.com/thatf_ckingguylj/",
         "location": "225 N 5th St, Boise, ID 83702",
         "recurrence": "Weekly on Wednesday",
         "signupInstructions": "In person, 30 mins before show. Maps may say the venue is closed, but rest assured it's open.",
         "showTime": "20:00",
         "startDate": "2025-03-05"
-    },
-    {
-        "id": "3",
-        "name": "The Social Open Mic",
-        "contactInfo": "https://www.instagram.com/frickfoster/",
-        "location": "404 S 8th St Suite L120, Boise, ID 83702",
-        "recurrence": "Biweekly on Tuesday",
-        "signupInstructions": "In person, 30 mins before show",
-        "showTime": "20:00",
-        "startDate": "2025-03-11"
     },
     {
         "id": "2",
