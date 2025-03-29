@@ -5,6 +5,8 @@ Currently, the scope of this project is limited to the Boise open mic comedy sce
 
 Additionally, this project is architected with growth scenarios in mind. Should the project wish to expand to other groups/scenes, traditional moderation features can be added in the future.
 
+Source code is licensed under The MIT License (see LICENSE.md).
+
 ## Setup
 - Install NPM
 

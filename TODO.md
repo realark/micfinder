@@ -8,18 +8,16 @@ MVP:
 - [X] implement optimistic concurrency
 - [X] Make moble rendering non-fugly
 - [X] switch to free postgres hosting
-- [ ] Colab setup
-  - [ ] Documentation
-  - [ ] CI and branch protection
-- [ ] Analytics
-- [ ] Add remaining mics
-- [ ] make project public
+- [X] make project public
+- [X] Analytics
+- [X] Add remaining mics
 
 BACKLOG
 - [ ] tech debt
   - [ ] db migrations
   - [ ] refactor existing code into sensible modules (config, persistence test doubles, unit test helpers, unit vs integration tests, etc)
 - [ ] ops
+  - [ ] Documentation for dev setup
   - [ ] views for human friendly audit logging
   - [ ] tools for db rollback/restore
 - [ ] potential features
