@@ -13,7 +13,7 @@ describe('API Endpoints', () => {
   let app, shutdown;
 
   beforeAll(async () => {
-    container = await new GenericContainer('postgres:16')
+    container = await new GenericContainer('postgres:17')
       .withExposedPorts(5432)
       .withEnvironment({
         POSTGRES_USER: 'openmics',
