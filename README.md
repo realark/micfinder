@@ -7,34 +7,49 @@ Additionally, this project is architected with growth scenarios in mind. Should 
 
 Source code is licensed under The MIT License (see LICENSE.md).
 
+# Public API
+
+A public swagger API is available to backup (almost) all data on micfinder. For security reasons, user info is not accessible.
+
+https://micfinder-backend.onrender.com/api-docs/
+
+# Development
 ## Setup
 - Install NPM
-
+- Install docker and docker-compose
+- Set up local config
 ```sh
 cd backend
 cp .env.sample .env # then make desired changes to your .env file
 ```
 
-## Local Dev
-### Frontend
+## Running tests
+```sh
+cd backend/
+npm run test
+```
+
+## Running a local dev environment
+Database:
+```sh
+docker-compose up
+```
+
+Frontend:
 ```sh
 cd frontend/
 npm run dev
-npm run dev -- --host # if you want to expose to external hosts (good for mobile phone testing)
+# or, if you want to expose to external hosts (good for mobile phone testing)
+npm run dev -- --host
 ```
-### Backend
+Backend:
 ```sh
 cd backend/
-npm run dev
+# or, if you want to expose to external hosts (good for mobile phone testing)
+npm run dev -- --host
 ```
 
 ## Deployments
+App deployments occur when a change is pushed to master.
 
-Deployments occur when a change is pushed to master.
-
-# TODO
-- Vanilla Node backend with basic routing
-- Real persistence layer
-- Database snapshot create and restore
-- Branch Protection
-- Basic CI
+Database migrations are not set up. Should changes to the database be required, this must be done by hand.
