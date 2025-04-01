@@ -410,12 +410,42 @@ const MicFinder = () => {
     const firstDay = getFirstDayOfMonth(year, month);
 
     // Create array for the days in month
-    const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+    const days = Array.from({ length: daysInMonth }, (_, i) => ({
+      day: i + 1,
+      month: month,
+      year: year,
+      isCurrentMonth: true
+    }));
 
-    // Add empty cells for days before the first day of month
-    const paddingDays = Array.from({ length: firstDay }, () => null);
+    // Add days from previous month
+    const prevMonth = month === 0 ? 11 : month - 1;
+    const prevYear = month === 0 ? year - 1 : year;
+    const daysInPrevMonth = getDaysInMonth(prevYear, prevMonth);
 
-    return [...paddingDays, ...days];
+    const prevMonthDays = Array.from({ length: firstDay }, (_, i) => ({
+      day: daysInPrevMonth - firstDay + i + 1,
+      month: prevMonth,
+      year: prevYear,
+      isCurrentMonth: false
+    }));
+
+    // Calculate how many days from next month we need to fill the grid
+    // We want to ensure we have a complete grid of 6 weeks (42 days)
+    const totalDaysShown = 42;
+    const nextMonthDaysCount = totalDaysShown - (days.length + prevMonthDays.length);
+
+    // Add days from next month
+    const nextMonth = month === 11 ? 0 : month + 1;
+    const nextYear = month === 11 ? year + 1 : year;
+
+    const nextMonthDays = Array.from({ length: nextMonthDaysCount }, (_, i) => ({
+      day: i + 1,
+      month: nextMonth,
+      year: nextYear,
+      isCurrentMonth: false
+    }));
+
+    return [...prevMonthDays, ...days, ...nextMonthDays];
   };
 
   const getWeekDays = () => {
@@ -427,13 +457,17 @@ const MicFinder = () => {
   const getEventsForDate = (dayOrDate) => {
     if (!dayOrDate) return [];
 
-    // Handle both day number (from month view) and Date object (from week view)
+    // Handle different input types
     let date;
     if (typeof dayOrDate === 'number') {
-      // It's a day number from month view
+      // It's a day number from old month view implementation
       const year = currentDate.getFullYear();
       const month = currentDate.getMonth();
       date = new Date(year, month, dayOrDate);
+    } else if (dayOrDate.day !== undefined) {
+      // It's an object with day, month, year from new month view implementation
+      const { day, month, year } = dayOrDate;
+      date = new Date(year, month, day);
     } else {
       // It's already a Date object from week view
       date = new Date(dayOrDate);
@@ -616,37 +650,37 @@ const MicFinder = () => {
             </div>
           ))}
 
-          {days.map((day, index) => {
-            const events = day ? getEventsForDate(day) : [];
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
+          {days.map((dayObj, index) => {
+            const events = getEventsForDate(dayObj);
+            const today = new Date();
             const isToday =
-              day === new Date().getDate() &&
-                month === new Date().getMonth() &&
-                year === new Date().getFullYear();
+              dayObj.day === today.getDate() &&
+              dayObj.month === today.getMonth() &&
+              dayObj.year === today.getFullYear();
+
             return (
               <div
                 key={index}
-                className={`border rounded min-h-14 sm:min-h-20 p-0 sm:p-1 ${day ? 'bg-white' : 'bg-gray-100'} ${
+                className={`border rounded min-h-14 sm:min-h-20 p-0 sm:p-1 ${
+                  dayObj.isCurrentMonth ? 'bg-white' : 'bg-gray-200'
+                } ${
                   isToday ? 'border-blue-500 border-2' : ''
                 }`}
               >
-                {day && (
-                  <>
-                    <div className="text-right text-xs">{day}</div>
-                    <div className="overflow-y-auto max-h-48 sm:max-h-24">
-                      {sortEventsByTime(events).map(event => (
-                        <div
-                          key={event.id}
-                          className="text-xs p-0.5 my-0.5 bg-blue-100 rounded cursor-pointer"
-                          onClick={() => viewOpenMic(event.id)}
-                        >
-                          <div className="line-clamp-2">{event.name} {formatTo12Hour(event.showTime)}</div>
-                        </div>
-                      ))}
+                <div className={`text-right text-xs ${dayObj.isCurrentMonth ? 'text-gray-800' : 'text-gray-400'}`}>
+                  {dayObj.day}
+                </div>
+                <div className="overflow-y-auto max-h-48 sm:max-h-24">
+                  {sortEventsByTime(events).map(event => (
+                    <div
+                      key={event.id}
+                      className="text-xs p-0.5 my-0.5 bg-blue-100 rounded cursor-pointer"
+                      onClick={() => viewOpenMic(event.id)}
+                    >
+                      <div className="line-clamp-2">{event.name} {formatTo12Hour(event.showTime)}</div>
                     </div>
-                  </>
-                )}
+                  ))}
+                </div>
               </div>
             );
           })}
