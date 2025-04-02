@@ -49,6 +49,10 @@ cd backend/
 npm run dev -- --host
 ```
 
+By default, a test user will be created in the local env:
+- username: `testy@gmail.com`
+- password: `testpassword`
+
 ## Deployments
 App deployments occur when a change is pushed to master.
 
