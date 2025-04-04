@@ -19,8 +19,10 @@ https://micfinder-backend.onrender.com/api-docs/
 - Install docker and docker-compose
 - Set up local config
 ```sh
-cd backend
-cp .env.sample .env # then make desired changes to your .env file
+# from the repo root
+cp .env.local.sample .env # then make desired changes to your .env file
+# alternatively, if you just want to use the standard local file without making any changes
+ln -s .env.local.sample .env
 ```
 
 ## Running tests
@@ -39,13 +41,14 @@ Frontend:
 ```sh
 cd frontend/
 npm run dev
-# or, if you want to expose to external hosts (good for mobile phone testing)
+# alternatively, if you want to expose to external hosts (good for mobile phone testing)
 npm run dev -- --host
 ```
 Backend:
 ```sh
 cd backend/
-# or, if you want to expose to external hosts (good for mobile phone testing)
+npm run dev
+# alternatively, if you want to expose to external hosts (good for mobile phone testing)
 npm run dev -- --host
 ```
 
@@ -56,4 +59,4 @@ By default, a test user will be created in the local env:
 ## Deployments
 App deployments occur when a change is pushed to master.
 
-Database migrations are not set up. Should changes to the database be required, this must be done by hand.
+NOTE: Database migrations are not set up. Should changes to the database be required, this must be done by hand.
