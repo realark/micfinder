@@ -678,6 +678,16 @@ app.delete('/mics/:id', async (req, res) => {
   }
 });
 
+// middleware
+app.use((req, res, next) => {
+  try {
+    decodeURI(req.url);
+    next();
+  } catch (err) {
+    res.status(400).end("Bad Request: Malformed URI");
+  }
+});
+
 // everyting else
 app.use((req, res) => {
   res.status(404).json({ error: 'resource not found' });
