@@ -482,11 +482,6 @@ const MicFinder = () => {
       const startDate = new Date(mic.startDate);
       startDate.setHours(12, 0, 0, 0);
 
-      // Make sure we're not showing events before their start date
-      if (date < startDate) {
-        return false;
-      }
-
       // Check if this is the exact date (one-time event)
       if (startDate.getDate() === date.getDate() &&
         startDate.getMonth() === date.getMonth() &&
@@ -495,7 +490,12 @@ const MicFinder = () => {
           return true;
         }
 
-      if (mic.recurrence) {
+      // For recurring events, make sure we're not showing events before their start date
+      if (date < startDate) {
+        return false;
+      }
+
+      if (mic.recurrence && mic.recurrence.trim() !== '') {
         try {
           // Parse the rrule string
           const rule = rrulestr(mic.recurrence, {
