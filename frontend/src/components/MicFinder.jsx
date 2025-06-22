@@ -132,6 +132,23 @@ const MicFinder = () => {
     }
   }, [isServerLoading, serverLoadingTimeout]);
 
+  // Handle URL parameters on component mount and when openMics change
+  useEffect(() => {
+    if (openMics.length > 0) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const micId = urlParams.get('id');
+      
+      if (micId) {
+        // Find the mic and view it
+        const mic = openMics.find(m => m.id.toString() === micId);
+        if (mic) {
+          setCurrentMic(mic);
+          setViewMode('view-mic');
+        }
+      }
+    }
+  }, [openMics]);
+
   // Login handler
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -329,6 +346,11 @@ const MicFinder = () => {
 
   const viewOpenMic = async (id) => {
     try {
+      // Update URL with mic ID
+      const url = new URL(window.location);
+      url.searchParams.set('id', id);
+      window.history.pushState({}, '', url);
+
       // Fetch the latest version of the mic from the server
       const response = await fetch(`${API_URL}/mics/${id}`);
 
@@ -955,7 +977,13 @@ const MicFinder = () => {
                 </>
               )}
               <button
-                onClick={() => setViewMode('view')}
+                onClick={() => {
+                  // Clear URL parameter when closing
+                  const url = new URL(window.location);
+                  url.searchParams.delete('id');
+                  window.history.pushState({}, '', url);
+                  setViewMode('view');
+                }}
                 className="text-gray-500 hover:text-gray-700 ml-2"
               >
                 × Close
