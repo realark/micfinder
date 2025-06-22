@@ -478,8 +478,17 @@ const MicFinder = () => {
 
     // Filter events that occur on this day
     return openMics.filter(mic => {
-      // Parse the start date
-      const startDate = new Date(mic.startDate);
+      // Parse the start date more carefully to avoid timezone issues
+      // If mic.startDate is in YYYY-MM-DD format, parse it as local date
+      let startDate;
+      if (mic.startDate.includes('T')) {
+        // It's a full datetime string
+        startDate = new Date(mic.startDate);
+      } else {
+        // It's a date-only string (YYYY-MM-DD), parse as local date
+        const [year, month, day] = mic.startDate.split('-').map(num => parseInt(num, 10));
+        startDate = new Date(year, month - 1, day); // month is 0-indexed
+      }
       startDate.setHours(12, 0, 0, 0);
 
       // Check if this is the exact date (one-time event)
