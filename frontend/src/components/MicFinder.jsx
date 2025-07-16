@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { RRule, RRuleSet, rrulestr } from 'rrule';
 import RecurrenceSelector from './RecurrenceSelector';
 import PasswordChange from './PasswordChange';
+import QRCode from 'qrcode';
 const API_URL = import.meta.env.VITE_MICFINDER_API_URL;
 const defaultSignupInstructions = "";
 
@@ -65,6 +66,14 @@ const MicFinder = () => {
   const [serverLoadingTimeout, setServerLoadingTimeout] = useState(false);
   // percentage counter for wakeup screen
   const [loadingPercent, setLoadingPercent] = useState(0);
+  // State for share modal
+  const [showShareModal, setShowShareModal] = useState(false);
+  // State for QR code data URL
+  const [qrCodeDataUrl, setQrCodeDataUrl] = useState('');
+  // Ref for canvas element
+  const canvasRef = useRef(null);
+  // State for copy feedback
+  const [copySuccess, setCopySuccess] = useState(false);
 
   // Check server health and load data from backend on component mount
   useEffect(() => {
@@ -137,7 +146,7 @@ const MicFinder = () => {
     if (openMics.length > 0) {
       const urlParams = new URLSearchParams(window.location.search);
       const micId = urlParams.get('id');
-      
+
       if (micId) {
         // Find the mic and view it
         const mic = openMics.find(m => m.id.toString() === micId);
@@ -686,12 +695,12 @@ const MicFinder = () => {
   const formatNextShowDate = (date) => {
     if (!date) return null;
 
-    const options = { 
-      weekday: 'long', 
-      month: '2-digit', 
-      day: '2-digit' 
+    const options = {
+      weekday: 'long',
+      month: '2-digit',
+      day: '2-digit'
     };
-    
+
     return date.toLocaleDateString('en-US', options);
   };
 
@@ -857,6 +866,127 @@ const MicFinder = () => {
     }
   };
 
+  // Generate QR code with custom border
+  const generateQRCode = async (url, borderImagePath = null) => {
+    try {
+      // Generate QR code data URL first
+      const qrDataUrl = await QRCode.toDataURL(url, {
+        width: 200,
+        margin: 2,
+        color: {
+          dark: '#000000',
+          light: '#00000000'
+        }
+      });
+
+      if (borderImagePath) {
+        // If we have a border image, use canvas to combine them
+        const canvas = canvasRef.current;
+        if (!canvas) {
+          // Fallback to just QR code if canvas not available
+          setQrCodeDataUrl(qrDataUrl);
+          return;
+        }
+
+        const ctx = canvas.getContext('2d');
+
+        // Load border image
+        const borderImage = new Image();
+        borderImage.onload = () => {
+          // Create QR code image
+          const qrImage = new Image();
+          qrImage.onload = () => {
+            // Set canvas size to border image size
+            canvas.width = borderImage.width;
+            canvas.height = borderImage.height;
+
+            // Draw border image
+            ctx.drawImage(borderImage, 0, 0);
+
+            // Calculate position to center QR code
+            const fgScale = 0.75;
+            const qrSize = Math.min(borderImage.width * fgScale, borderImage.height * fgScale);
+            const x = (borderImage.width - qrSize) / 2;
+            const y = (borderImage.height - qrSize) / 2;
+
+            // Draw QR code centered on border
+            ctx.drawImage(qrImage, x, y, qrSize, qrSize);
+
+            // Convert canvas to data URL
+            setQrCodeDataUrl(canvas.toDataURL());
+          };
+          qrImage.src = qrDataUrl;
+        };
+        borderImage.onerror = () => {
+          // If border image fails to load, just use QR code
+          setQrCodeDataUrl(qrDataUrl);
+        };
+        borderImage.src = borderImagePath;
+      } else {
+        // No border, just use the QR code directly
+        setQrCodeDataUrl(qrDataUrl);
+      }
+    } catch (error) {
+      console.error('Error generating QR code:', error);
+      // Fallback to simple QR code without border
+      try {
+        const fallbackQrDataUrl = await QRCode.toDataURL(url, {
+          width: 200,
+          margin: 2
+        });
+        setQrCodeDataUrl(fallbackQrDataUrl);
+      } catch (fallbackError) {
+        console.error('Fallback QR code generation also failed:', fallbackError);
+      }
+    }
+  };
+
+  // Handle share button click
+  const handleShare = () => {
+    const currentUrl = window.location.href;
+    setShowShareModal(true);
+
+    // Generate QR code with custom border (you can replace with your border image path)
+    // For now, using null - replace with your border image path like '/micfinder-border.png'
+    generateQRCode(currentUrl, "/micfinder-border.jpg");
+  };
+
+  // Copy URL to clipboard
+  const copyToClipboard = async (text) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000); // Reset after 2 seconds
+    } catch (error) {
+      console.error('Failed to copy to clipboard:', error);
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopySuccess(true);
+      setTimeout(() => setCopySuccess(false), 2000); // Reset after 2 seconds
+    }
+  };
+
+  // Download QR code
+  const downloadQRCode = () => {
+    if (!qrCodeDataUrl) return;
+    
+    const link = document.createElement('a');
+    // Use different filename based on whether we're viewing a specific mic or the main calendar
+    const filename = viewMode === 'view-mic' && currentMic.name 
+      ? `${currentMic.name}-qr-code.png`
+      : 'micfinder-qr-code.png';
+    link.download = filename;
+    link.href = qrCodeDataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // Server loading screen
   if (isServerLoading) {
     return (
@@ -889,7 +1019,7 @@ const MicFinder = () => {
 
       {/* View toggle buttons */}
       {viewMode === 'view' && (!isServerLoading) &&
-      <div className="flex mb-3 gap-1 sm:gap-2">
+      <div className="flex mb-3 gap-1 sm:gap-2 justify-between items-center">
         <div className="bg-gray-100 p-1 rounded-lg inline-flex">
           <button
             onClick={() => setDisplayMode('calendar')}
@@ -1063,7 +1193,7 @@ const MicFinder = () => {
           {(() => {
             const nextShowDate = getNextShowDate(currentMic);
             const formattedDate = formatNextShowDate(nextShowDate);
-            
+
             if (formattedDate) {
               return (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -1078,6 +1208,19 @@ const MicFinder = () => {
           <h3 className="text-lg font-semibold text-gray-700 mb-2">Sign-up Instructions</h3>
           <div className="bg-gray-50 p-4 rounded border border-gray-200">
             <p>{currentMic.signupInstructions || defaultSignupInstructions}</p>
+          </div>
+
+          {/* Share Button */}
+          <div className="flex justify-center mt-6">
+            <button
+              onClick={handleShare}
+              className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-lg flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+              </svg>
+              Share
+            </button>
           </div>
         </div>
       )}
@@ -1174,6 +1317,7 @@ const MicFinder = () => {
       )}
 
       {viewMode === 'view' && displayMode === 'calendar' && (!isServerLoading) && (
+        <div className="items-center">
           <div className="bg-gray-100 p-1 rounded-lg inline-flex mt-2">
             <button
               onClick={() => setCalendarView('month')}
@@ -1188,6 +1332,23 @@ const MicFinder = () => {
               Week
             </button>
           </div>
+        <button
+          onClick={() => {
+            // Clear any mic-specific URL parameters for main calendar share
+            const url = new URL(window.location);
+            url.searchParams.delete('id');
+            const currentUrl = url.toString();
+            setShowShareModal(true);
+            generateQRCode(currentUrl, "/micfinder-border.jpg");
+          }}
+          className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm flex items-center gap-1"
+        >
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
+          </svg>
+          Share
+        </button>
+        </div>
         )}
     </div>
     {/* Password Change Modal */}
@@ -1197,6 +1358,74 @@ const MicFinder = () => {
         onCancel={handlePasswordChangeCancel}
         token={localStorage.getItem('authToken')}
       />
+    )}
+
+    {/* Share Modal */}
+    {showShareModal && (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Share Open Mic</h3>
+            <button
+              onClick={() => setShowShareModal(false)}
+              className="text-gray-500 hover:text-gray-700"
+            >
+              ×
+            </button>
+          </div>
+
+          {/* URL Section */}
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Share URL:
+            </label>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={window.location.href}
+                readOnly
+                className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-gray-50"
+              />
+              <button
+                onClick={() => copyToClipboard(window.location.href)}
+                className={`px-3 py-2 rounded text-sm transition-colors ${
+                  copySuccess
+                    ? 'bg-green-500 text-white'
+                    : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
+              >
+                {copySuccess ? '✓ Copied!' : 'Copy'}
+              </button>
+            </div>
+          </div>
+
+          {/* QR Code Section */}
+          <div className="text-center">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              QR Code:
+            </label>
+            {qrCodeDataUrl && (
+              <div className="mb-4">
+                <img
+                  src={qrCodeDataUrl}
+                  alt="QR Code"
+                  className="mx-auto border border-gray-300 rounded"
+                />
+              </div>
+            )}
+            <button
+              onClick={downloadQRCode}
+              disabled={!qrCodeDataUrl}
+              className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 text-white px-4 py-2 rounded text-sm"
+            >
+              Download QR Code
+            </button>
+          </div>
+
+          {/* Hidden canvas for QR code generation */}
+          <canvas ref={canvasRef} style={{ display: 'none' }} />
+        </div>
+      </div>
     )}
 
       <div className="bottom-0 w-full flex justify-end mt-4">
