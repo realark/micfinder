@@ -642,6 +642,59 @@ const MicFinder = () => {
     return [...events].sort((a, b) => (a.showTime || '').localeCompare(b.showTime || ''));
   };
 
+  // Calculate next show date for a mic
+  const getNextShowDate = (mic) => {
+    if (!mic.startDate) return null;
+
+    // Parse the start date more carefully to avoid timezone issues
+    let startDate;
+    if (mic.startDate.includes('T')) {
+      // It's a full datetime string
+      startDate = new Date(mic.startDate);
+    } else {
+      // It's a date-only string (YYYY-MM-DD), parse as local date
+      const [year, month, day] = mic.startDate.split('-').map(num => parseInt(num, 10));
+      startDate = new Date(year, month - 1, day); // month is 0-indexed
+    }
+    startDate.setHours(12, 0, 0, 0);
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Start of today
+
+    // If it's a one-time event
+    if (!mic.recurrence || mic.recurrence.trim() === '') {
+      // Return the start date if it's today or in the future
+      return startDate >= now ? startDate : null;
+    }
+
+    // For recurring events
+    try {
+      const rule = rrulestr(mic.recurrence, {
+        dtstart: new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 12, 0, 0)
+      });
+
+      // Get the next occurrence after today
+      const nextOccurrence = rule.after(now, true); // true means inclusive of today
+      return nextOccurrence;
+    } catch (error) {
+      console.error('Error parsing rrule for next show:', error);
+      return null;
+    }
+  };
+
+  // Format date for next show display
+  const formatNextShowDate = (date) => {
+    if (!date) return null;
+
+    const options = { 
+      weekday: 'long', 
+      month: '2-digit', 
+      day: '2-digit' 
+    };
+    
+    return date.toLocaleDateString('en-US', options);
+  };
+
   // Week view helper functions
   const getWeekDates = () => {
     const currentDay = currentDate.getDay(); // 0 = Sunday, 1 = Monday, etc.
@@ -1005,6 +1058,22 @@ const MicFinder = () => {
               <span>{currentMic.contactInfo}</span>
             </div>
           </div>
+
+          {/* Next Show Box */}
+          {(() => {
+            const nextShowDate = getNextShowDate(currentMic);
+            const formattedDate = formatNextShowDate(nextShowDate);
+            
+            if (formattedDate) {
+              return (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                  <h3 className="text-lg font-semibold text-blue-700 mb-2">Next Show</h3>
+                  <p className="text-blue-600 font-medium">{formattedDate}</p>
+                </div>
+              );
+            }
+            return null;
+          })()}
 
           <h3 className="text-lg font-semibold text-gray-700 mb-2">Sign-up Instructions</h3>
           <div className="bg-gray-50 p-4 rounded border border-gray-200">
