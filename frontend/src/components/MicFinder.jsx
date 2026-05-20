@@ -396,7 +396,8 @@ const MicFinder = () => {
           return;
         }
 
-        const response = await fetch(`${API_URL}/mics/${id}?edit_version=${edit_version}`, {
+        const query = edit_version != null ? `?edit_version=${edit_version}` : '';
+        const response = await fetch(`${API_URL}/mics/${id}${query}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${authToken}`

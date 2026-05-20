@@ -627,11 +627,6 @@ app.delete('/mics/:id', async (req, res) => {
     const decoded = jwt.verify(token, JWT_SECRET);
     const userId = decoded.userId;
 
-    // Check if edit_version is provided
-    if (edit_version === undefined) {
-      return res.status(400).json({ error: 'edit_version is required for deletion' });
-    }
-
     // First, get the current data to check the edit_version
     const getCurrentData = await pool.query('SELECT data FROM mic WHERE id = $1', [id]);
 
@@ -642,11 +637,14 @@ app.delete('/mics/:id', async (req, res) => {
     const currentData = getCurrentData.rows[0].data;
     const currentVersion = parseInt(currentData.edit_version);
 
-    if (parseInt(edit_version) !== currentVersion) {
-      return res.status(409).json({
-        error: 'Conflict: The record has been modified since you last retrieved it',
-        details: `Expected version ${currentVersion}, got ${edit_version}`
-      });
+    // Check edit_version for conflict detection (optional — supports legacy mics without version)
+    if (edit_version !== undefined && !isNaN(currentVersion)) {
+      if (parseInt(edit_version) !== currentVersion) {
+        return res.status(409).json({
+          error: 'Conflict: The record has been modified since you last retrieved it',
+          details: `Expected version ${currentVersion}, got ${edit_version}`
+        });
+      }
     }
 
     const client = await pool.connect();
