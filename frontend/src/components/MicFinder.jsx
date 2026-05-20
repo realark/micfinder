@@ -377,7 +377,7 @@ const MicFinder = () => {
   };
 
   // Delete an open mic
-  const deleteOpenMic = async (id) => {
+  const deleteOpenMic = async (id, edit_version) => {
     if (window.confirm('Are you sure you want to delete this open mic?')) {
       try {
         const authToken = localStorage.getItem('authToken');
@@ -396,7 +396,7 @@ const MicFinder = () => {
           return;
         }
 
-        const response = await fetch(`${API_URL}/mics/${id}`, {
+        const response = await fetch(`${API_URL}/mics/${id}?edit_version=${edit_version}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${authToken}`
@@ -1277,7 +1277,7 @@ const MicFinder = () => {
                             Edit
                           </button>
                           <button
-                            onClick={() => deleteOpenMic(mic.id)}
+                            onClick={() => deleteOpenMic(mic.id, mic.edit_version)}
                             className="text-red-500 hover:underline"
                           >
                             Delete

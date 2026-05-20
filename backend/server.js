@@ -615,7 +615,7 @@ app.put('/mics/:id', validateMicData, async (req, res) => {
  */
 app.delete('/mics/:id', async (req, res) => {
   const { id } = req.params;
-  const { edit_version } = req.body;
+  const edit_version = req.body?.edit_version ?? req.query.edit_version;
 
   try {
     const authHeader = req.headers.authorization;

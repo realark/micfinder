@@ -237,6 +237,38 @@ describe('API Endpoints', () => {
     }
   });
 
+  it('deletes mic with edit_version as query parameter', async () => {
+    const authToken = (await request(app)
+      .post('/auth/login')
+      .send({ email: testEmail, password: testPassword })
+      .expect(200))
+      .body.token;
+
+    const createRes = await request(app)
+      .post('/mics')
+      .set('Authorization', `Bearer ${authToken}`)
+      .send({
+        name: 'Delete Test',
+        location: 'Delete Venue',
+        startDate: '20250101',
+        showTime: '19:00',
+      })
+      .expect(200);
+    const micId = createRes.body.mic.id;
+    const editVersion = createRes.body.mic.edit_version;
+
+    // Delete with edit_version as query param (simulating browser behavior)
+    await request(app)
+      .delete(`/mics/${micId}?edit_version=${editVersion}`)
+      .set('Authorization', `Bearer ${authToken}`)
+      .expect(200);
+
+    // Verify it's gone
+    await request(app)
+      .get(`/mics/${micId}`)
+      .expect(404);
+  });
+
   it('prevents HTML injection in mic data', async () => {
     const authToken = (await request(app)
       .post('/auth/login')
