@@ -1104,7 +1104,7 @@ const MicFinder = () => {
 
       {/* Form for adding/editing open mics */}
       {(viewMode === 'add' || viewMode === 'edit') && (
-        <div className="bg-gray-100 p-4 rounded-lg mb-6">
+        <div className="editor-panel">
           <h2 className="text-xl font-semibold mb-4">
             {viewMode === 'add' ? 'Add New Open Mic' : 'Edit Open Mic'}
           </h2>
@@ -1295,9 +1295,9 @@ const MicFinder = () => {
 
             if (formattedDate) {
               return (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                  <h3 className="text-lg font-semibold text-blue-700 mb-2">Next Show</h3>
-                  <p className="text-blue-600 font-medium">{formattedDate}</p>
+                <div className="show-highlight">
+                  <h3>Next Show</h3>
+                  <p>{formattedDate}</p>
                 </div>
               );
             }
@@ -1459,13 +1459,13 @@ const MicFinder = () => {
     {/* Share Modal */}
     {showShareModal && (
       <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div className="retro-dialog p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Share Open Mic</h3>
             <button
               aria-label="Close share dialog"
               onClick={() => setShowShareModal(false)}
-              className="text-gray-500 hover:text-gray-700"
+              className="dialog-close text-gray-500 hover:text-gray-700"
             >
               ×
             </button>

@@ -32,6 +32,12 @@ when provided, and sign-up instructions. Select a mic name or **View mic details
 to open its detail page. Long text wraps, and sign-up instructions retain line
 breaks. Calendar events and view controls support keyboard focus.
 
+The retro theme uses a locally bundled Silkscreen font for display headings and
+view controls, with system sans-serif text for mic names and details. Theme colors
+live in `frontend/src/index.css`; responsive panel styles live in `frontend/src/App.css`.
+No external font service is contacted at runtime. Silkscreen is distributed under
+the SIL Open Font License in `frontend/public/silkscreen-OFL.txt`.
+
 
 # Development
 ## Setup

@@ -1,21 +1,71 @@
 @import "tailwindcss";
 
+/* Silkscreen is bundled locally under the SIL OFL; see /silkscreen-OFL.txt. */
+@font-face {
+  font-family: Silkscreen;
+  src: url('./assets/silkscreen.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  --color-blue-50: #eeedf8;
+  --color-blue-100: #e1dff3;
+  --color-blue-200: #c7c3e6;
+  --color-blue-300: #a6a0cf;
+  --color-blue-500: #514581;
+  --color-blue-600: #44386e;
+  --color-blue-700: #382e5c;
+  --color-gray-50: #faf6eb;
+  --color-gray-100: #eee7d7;
+  --color-gray-200: #e2d8c2;
+  --color-gray-300: #c9bea7;
+  --color-gray-400: #827b70;
+  --color-gray-500: #70695f;
+  --color-gray-600: #615c55;
+  --color-gray-700: #46424a;
+  --color-gray-800: #303047;
+  --color-green-500: #26735e;
+  --color-green-600: #1c604d;
+  --color-red-500: #b03945;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+}
+
 :root {
+  --ink: #29283e;
+  --muted: #686255;
+  --paper: #fffdf5;
+  --canvas: #f4edda;
+  --line: #d6ccb5;
+  --accent: #514581;
+  --accent-light: #eeedf8;
+  --highlight: #f7cd68;
+  --pixel-font: Silkscreen, "Courier New", monospace;
   font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   line-height: 1.5;
   font-weight: 400;
-  color: #1e293b;
-  background: #f5f7fb;
+  color: var(--ink);
+  background: var(--canvas);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
 }
 
 body { margin: 0; min-width: 320px; }
-button { cursor: pointer; min-height: 44px; }
+button { cursor: pointer; min-height: 44px; border-radius: 0; }
 button:disabled { cursor: not-allowed; }
-input:not([type="checkbox"]):not([type="radio"]), select, textarea { min-height: 44px; font: inherit; }
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  min-height: 44px;
+  font: inherit;
+  border-radius: 0;
+  border-color: var(--line);
+  background-color: var(--paper);
+}
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
-  outline: 3px solid #2563eb;
+  outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
