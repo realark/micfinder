@@ -40,25 +40,18 @@ npm run test
 ```
 
 ## Running a local dev environment
-Database:
+
+From the repository root:
+
 ```sh
-docker-compose up
+./localldev.sh
 ```
 
-Frontend:
-```sh
-cd frontend/
-npm run dev
-# alternatively, if you want to expose to external hosts (good for mobile phone testing)
-npm run dev -- --host
-```
-Backend:
-```sh
-cd backend/
-npm run dev
-# alternatively, if you want to expose to external hosts (good for mobile phone testing)
-npm run dev -- --host
-```
+The script starts PostgreSQL with Docker Compose, waits for it, then starts the
+backend and Vite frontend. It uses `.env.local.sample` as defaults and applies
+any values from `.env` or the current shell. If the complete local application
+is already running, the command exits successfully without starting duplicates.
+Press Ctrl-C to stop the services that the script started.
 
 By default, a test user will be created in the local env:
 - username: `testy@gmail.com`
