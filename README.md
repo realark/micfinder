@@ -20,6 +20,18 @@ dates to skip. Selecting an occurrence in the calendar also provides a
 from the recurrence editor. Recurrence end and exception dates use local
 `YYYY-MM-DD` values to preserve date-only calendar semantics.
 
+## Browsing on desktop and mobile
+
+Desktop opens the month calendar; screens narrower than 640px open the mic list
+for easier reading. Calendar/List and Month/Week remain available, and resizing
+does not override a view selected during the session. On phones, Week shows a
+vertical agenda and Month scrolls horizontally without squeezing event names.
+
+Mic cards show the next scheduled date, show time, location, contact information
+when provided, and sign-up instructions. Select a mic name or **View mic details**
+to open its detail page. Long text wraps, and sign-up instructions retain line
+breaks. Calendar events and view controls support keyboard focus.
+
 
 # Development
 ## Setup

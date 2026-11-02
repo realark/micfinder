@@ -4,7 +4,6 @@ import RecurrenceSelector from './RecurrenceSelector';
 import PasswordChange from './PasswordChange';
 import QRCode from 'qrcode';
 const API_URL = import.meta.env.VITE_MICFINDER_API_URL;
-const defaultSignupInstructions = "";
 const parseMicDate = (dateString) => {
   if (dateString.includes('T')) {
     return new Date(dateString);
@@ -75,7 +74,9 @@ const MicFinder = () => {
   // State for current calendar date
   const [currentDate, setCurrentDate] = useState(new Date());
   // State for display mode (calendar or list)
-  const [displayMode, setDisplayMode] = useState('calendar'); // 'calendar', 'list'
+  const [displayMode, setDisplayMode] = useState(() =>
+    window.matchMedia('(max-width: 639px)').matches ? 'list' : 'calendar'
+  ); // Choose an initial view; resizing must not override the user's choice.
   // State for displaying login status
   const [loginError, setLoginError] = useState('');
   // State for password reset
@@ -778,22 +779,24 @@ const MicFinder = () => {
     const dayNames = getWeekDays();
 
     return (
-      <div className="bg-white rounded-lg shadow p-0 w-full max-w-none overflow-hidden">
-        <div className="flex justify-between items-center mb-1">
-          <button onClick={goToPreviousMonth} className="p-1 bg-gray-100 rounded w-6 h-6 flex items-center justify-center">
+      <div className="calendar-panel">
+        <div className="calendar-navigation">
+          <button onClick={goToPreviousMonth} aria-label="Previous month" className="calendar-arrow">
             &lt;
           </button>
           <h3 className="text-sm sm:text-lg font-semibold">
             {getMonthName(currentDate.getMonth())} {currentDate.getFullYear()}
           </h3>
-          <button onClick={goToNextMonth} className="p-1 bg-gray-100 rounded w-6 h-6 flex items-center justify-center">
+          <button onClick={goToNextMonth} aria-label="Next month" className="calendar-arrow">
             &gt;
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-0 sm:gap-1">
+        <p className="calendar-scroll-hint">Swipe the calendar to see more days, or use List for full mic details.</p>
+        <div className="calendar-scroll" role="region" aria-label="Monthly calendar" tabIndex={0}>
+        <div className="month-grid">
           {dayNames.map((dayName, index) => (
-            <div key={index} className="text-center font-medium p-1 text-xs sm:text-sm">
+            <div key={index} className="calendar-weekday">
               {dayName}
             </div>
           ))}
@@ -809,32 +812,31 @@ const MicFinder = () => {
             return (
               <div
                 key={index}
-                className={`border rounded min-h-14 sm:min-h-20 p-0 sm:p-1 ${
-                  dayObj.isCurrentMonth ? 'bg-white' : 'bg-gray-200'
-                } ${
-                  isToday ? 'border-blue-500 border-2' : ''
-                }`}
+                className={`calendar-day ${dayObj.isCurrentMonth ? '' : 'outside-month'} ${isToday ? 'is-today' : ''}`}
               >
-                <div className={`text-right text-xs ${dayObj.isCurrentMonth ? 'text-gray-800' : 'text-gray-400'}`}>
+                <div className="calendar-date" aria-current={isToday ? 'date' : undefined}>
                   {dayObj.day}
                 </div>
-                <div className="overflow-y-auto max-h-48 sm:max-h-24">
+                <div className="calendar-events">
                   {sortEventsByTime(events).map(event => (
-                    <div
+                    <button
+                      type="button"
                       key={event.id}
-                      className="text-xs p-0.5 my-0.5 bg-blue-100 rounded cursor-pointer"
+                      className="calendar-event"
                       onClick={() => viewOpenMic(
                         event.id,
                         formatLocalDate(new Date(dayObj.year, dayObj.month, dayObj.day))
                       )}
                     >
-                      <div className="line-clamp-2">{event.name} {formatTo12Hour(event.showTime)}</div>
-                    </div>
+                      <span className="event-time">{formatTo12Hour(event.showTime)}</span>
+                      <span className="event-name">{event.name}</span>
+                    </button>
                   ))}
                 </div>
               </div>
             );
           })}
+        </div>
         </div>
       </div>
     );
@@ -846,22 +848,22 @@ const MicFinder = () => {
     const dayNames = getWeekDays();
 
     return (
-      <div className="bg-white rounded-lg shadow p-0 w-full max-w-none">
-        <div className="flex justify-between items-center mb-1">
-          <button onClick={goToPreviousWeek} className="p-1 bg-gray-100 rounded w-6 h-6 flex items-center justify-center">
+      <div className="calendar-panel">
+        <div className="calendar-navigation">
+          <button onClick={goToPreviousWeek} aria-label="Previous week" className="calendar-arrow">
             &lt;
           </button>
           <h3 className="text-sm sm:text-lg font-semibold">
             Week of {weekDates[0].toLocaleDateString()} - {weekDates[6].toLocaleDateString()}
           </h3>
-          <button onClick={goToNextWeek} className="p-1 bg-gray-100 rounded w-6 h-6 flex items-center justify-center">
+          <button onClick={goToNextWeek} aria-label="Next week" className="calendar-arrow">
             &gt;
           </button>
         </div>
 
-        <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
+        <div className="week-grid">
           {dayNames.map((dayName, index) => (
-            <div key={index} className="text-center font-medium p-1 text-xs sm:text-sm">
+            <div key={index} className="calendar-weekday">
               {dayName}
             </div>
           ))}
@@ -882,24 +884,23 @@ const MicFinder = () => {
             return (
               <div
                 key={index}
-                className={`border rounded min-h-20 sm:min-h-36 p-0.5 sm:p-2 ${
-                  isCurrentMonth ? 'bg-white' : 'bg-gray-50'
-                } ${
-                  isToday ? 'border-blue-500 border-2' : ''
-                }`}
+                className={`calendar-day ${isCurrentMonth ? '' : 'outside-month'} ${isToday ? 'is-today' : ''}`}
               >
-                <div className={`text-right text-xs ${isCurrentMonth ? 'font-normal' : 'text-gray-400'}`}>
-                  {day}
+                <div className="calendar-date" aria-current={isToday ? 'date' : undefined}>
+                  <span className="week-day-name">{dayNames[index]} </span>{day}
                 </div>
-                <div className="overflow-y-auto max-h-48 sm:max-h-24">
+                <div className="calendar-events">
+                  {events.length === 0 && <p className="week-empty">No mics scheduled</p>}
                   {sortEventsByTime(events).map(event => (
-                    <div
+                    <button
+                      type="button"
                       key={event.id}
-                      className="text-xs p-0.5 my-0.5 bg-blue-100 rounded cursor-pointer"
+                      className="calendar-event"
                       onClick={() => viewOpenMic(event.id, formatLocalDate(date))}
                     >
-                      <div className="line-clamp-2">{event.name} {formatTo12Hour(event.showTime)}</div>
-                    </div>
+                      <span className="event-time">{formatTo12Hour(event.showTime)}</span>
+                      <span className="event-name">{event.name}</span>
+                    </button>
                   ))}
                 </div>
               </div>
@@ -1069,29 +1070,36 @@ const MicFinder = () => {
 
   return (
     <>
-    <div className="max-w-full mx-auto p-2 sm:p-4">
-      <header className="mb-2">
-        <h1 className="text-xl font-bold mb-1">Boise Standup Comedy Open Mics</h1>
-        <p className="text-gray-600 text-sm">A community-maintained list of open mics</p>
+    <main className="mic-finder">
+      <header className="site-header">
+        <p className="site-eyebrow">Boise comedy · Community calendar</p>
+        <h1>Find your next open mic.</h1>
+        <p className="site-description">Standup comedy in Boise. Local stages, shared by the community.</p>
       </header>
 
       {/* View toggle buttons */}
       {viewMode === 'view' && (!isServerLoading) &&
-      <div className="flex mb-3 gap-1 sm:gap-2 justify-between items-center">
-        <div className="bg-gray-100 p-1 rounded-lg inline-flex">
+      <div className="view-toolbar">
+        <div className="view-switch" role="group" aria-label="Display">
           <button
             onClick={() => setDisplayMode('calendar')}
-            className={`px-2 sm:px-3 py-1 rounded text-sm ${displayMode === 'calendar' ? 'bg-white shadow' : ''}`}
+            aria-pressed={displayMode === 'calendar'}
           >
             Calendar
           </button>
           <button
             onClick={() => setDisplayMode('list')}
-            className={`px-2 sm:px-3 py-1 rounded text-sm ${displayMode === 'list' ? 'bg-white shadow' : ''}`}
+            aria-pressed={displayMode === 'list'}
           >
             List
           </button>
         </div>
+        {displayMode === 'calendar' && (
+          <div className="view-switch" role="group" aria-label="Calendar range">
+            <button onClick={() => setCalendarView('month')} aria-pressed={calendarView === 'month'}>Month</button>
+            <button onClick={() => setCalendarView('week')} aria-pressed={calendarView === 'week'}>Week</button>
+          </div>
+        )}
       </div>}
 
       {/* Form for adding/editing open mics */}
@@ -1207,12 +1215,12 @@ const MicFinder = () => {
         </div>
       )}
       {(viewMode === 'view-mic') && (
-        <div className="bg-white p-6 rounded-lg shadow-md border border-gray-200 mb-6">
-          <div className="flex justify-between items-start mb-6">
-            <h2 className="text-2xl font-bold text-blue-600">
+        <article className="mic-detail">
+          <div className="mic-card-heading">
+            <h2 className="mic-detail-title">
               {currentMic.name}
             </h2>
-            <div className="flex gap-2">
+            <div className="mic-actions">
               {user && (
                 <>
                   <button
@@ -1245,20 +1253,20 @@ const MicFinder = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
-            <div className="flex items-start">
-              <span className="text-gray-600 font-medium w-28">Show Time:</span>
-              <span>{currentMic.recurrence && `${formatRecurrence(currentMic)},`} {formatTo12Hour(currentMic.showTime)}</span>
+          <dl className="mic-facts">
+            <div>
+              <dt>Show time</dt>
+              <dd><strong>{formatTo12Hour(currentMic.showTime)}</strong>{currentMic.recurrence && <span className="mic-schedule">{formatRecurrence(currentMic)}</span>}</dd>
             </div>
-            <div className="flex items-start">
-              <span className="text-gray-600 font-medium w-28">Location:</span>
-              <span>{currentMic.location}</span>
+            <div>
+              <dt>Location</dt>
+              <dd>{currentMic.location}</dd>
             </div>
-            <div className="flex items-start">
-              <span className="text-gray-600 font-medium w-28">Contact:</span>
-              <span>{currentMic.contactInfo}</span>
-            </div>
-          </div>
+            {currentMic.contactInfo && <div>
+              <dt>Contact</dt>
+              <dd>{currentMic.contactInfo}</dd>
+            </div>}
+          </dl>
           {selectedOccurrenceDate && currentMic.recurrence && (
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
               <h3 className="font-semibold text-purple-800">Selected occurrence</h3>
@@ -1296,10 +1304,10 @@ const MicFinder = () => {
             return null;
           })()}
 
-          <h3 className="text-lg font-semibold text-gray-700 mb-2">Sign-up Instructions</h3>
-          <div className="bg-gray-50 p-4 rounded border border-gray-200">
-            <p>{currentMic.signupInstructions || defaultSignupInstructions}</p>
-          </div>
+          <section className="signup-section">
+            <h3>Sign-up instructions</h3>
+            <p>{currentMic.signupInstructions || 'Contact the venue for sign-up details.'}</p>
+          </section>
 
           {/* Share Button */}
           <div className="flex justify-center mt-6">
@@ -1313,7 +1321,7 @@ const MicFinder = () => {
               Share
             </button>
           </div>
-        </div>
+        </article>
       )}
 
       {/* Main content area */}
@@ -1326,10 +1334,12 @@ const MicFinder = () => {
           )}
 
           {displayMode === 'list' && (
-            <div className="space-y-4">
-              <h2 className="text-xl font-semibold">Available Open Mics</h2>
-
-              <div className="mt-4 flex justify-between items-center">
+            <section className="mic-list">
+              <div className="list-heading">
+                <div>
+                  <h2>Open mics around Boise</h2>
+                  <p>Find a stage. Check the details. Get on the list.</p>
+                </div>
                 {user && viewMode === 'view' && (
                   <button
                     onClick={() => {
@@ -1347,7 +1357,7 @@ const MicFinder = () => {
                       });
                       setViewMode('add');
                     }}
-                    className="bg-green-500 text-white px-4 py-2 rounded"
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-semibold"
                   >
                     Add New Open Mic
                   </button>
@@ -1357,12 +1367,14 @@ const MicFinder = () => {
               {openMics.length === 0 ? (
                 <p>No open mics available yet. Be the first to add one!</p>
               ) : (
-                openMics.map(mic => (
-                  <div key={mic.id} className="border rounded-lg p-4 shadow-sm">
-                    <div className="flex justify-between items-start">
-                      <h3 className="text-lg font-semibold">{mic.name}</h3>
+                openMics.map(mic => {
+                  const nextShowDate = getNextShowDate(mic);
+                  return (
+                  <article key={mic.id} className="mic-card">
+                    <div className="mic-card-heading">
+                      <h3><button className="mic-title-link" onClick={() => viewOpenMic(mic.id)}>{mic.name}</button></h3>
                       {user && (
-                        <div className="flex gap-2">
+                        <div className="mic-actions">
                           <button
                             onClick={() => editOpenMic(mic.id)}
                             className="text-blue-500 hover:underline"
@@ -1379,52 +1391,43 @@ const MicFinder = () => {
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-1 gap-2 mt-2">
-                      <div className="flex items-start">
-                        <span className="text-gray-600 font-medium w-28">Show Time:</span>
-                        <span>{mic.recurrence && `${formatRecurrence(mic)},`} {formatTo12Hour(mic.showTime)}</span>
+                    {nextShowDate && (
+                      <p className="next-show-badge">Next up · {formatNextShowDate(nextShowDate)}</p>
+                    )}
+                    <dl className="mic-facts">
+                      <div>
+                        <dt>Show time</dt>
+                        <dd><strong>{formatTo12Hour(mic.showTime)}</strong>{mic.recurrence && <span className="mic-schedule">{formatRecurrence(mic)}</span>}</dd>
                       </div>
-                      <div className="flex items-start">
-                        <span className="text-gray-600 font-medium w-28">Location:</span>
-                        <span>{mic.location}</span>
+                      <div>
+                        <dt>Location</dt>
+                        <dd>{mic.location}</dd>
                       </div>
-                      <div className="flex items-start">
-                        <span className="text-gray-600 font-medium w-28">Contact:</span>
-                        <span>{mic.contactInfo}</span>
+                      {mic.contactInfo && <div>
+                        <dt>Contact</dt>
+                        <dd>{mic.contactInfo}</dd>
+                      </div>}
+                      <div>
+                        <dt>Start date</dt>
+                        <dd>{mic.startDate}</dd>
                       </div>
-                      <div className="flex items-start">
-                        <span className="text-gray-600 font-medium w-28">Start Date:</span>
-                        <span>{mic.startDate}</span>
-                      </div>
-                      <h3 className="text-lg font-semibold text-gray-700 mb-2">Sign-up Instructions</h3>
-                      <div className="bg-gray-50 p-4 rounded border border-gray-200">
-                        <p>{mic.signupInstructions || defaultSignupInstructions}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))
+                    </dl>
+                    <section className="signup-section">
+                      <h4>Sign-up instructions</h4>
+                      <p>{mic.signupInstructions || 'Contact the venue for sign-up details.'}</p>
+                    </section>
+                    <button className="mic-details-link" onClick={() => viewOpenMic(mic.id)}>View mic details <span aria-hidden="true">→</span></button>
+                  </article>
+                  );
+                })
               )}
-            </div>
+            </section>
           )}
         </>
       )}
 
-      {viewMode === 'view' && displayMode === 'calendar' && (!isServerLoading) && (
-        <div className="items-center">
-          <div className="bg-gray-100 p-1 rounded-lg inline-flex mt-2">
-            <button
-              onClick={() => setCalendarView('month')}
-              className={`px-2 sm:px-3 py-1 rounded text-sm ${calendarView === 'month' ? 'bg-white shadow' : ''}`}
-            >
-              Month
-            </button>
-            <button
-              onClick={() => setCalendarView('week')}
-              className={`px-2 sm:px-3 py-1 rounded text-sm ${calendarView === 'week' ? 'bg-white shadow' : ''}`}
-            >
-              Week
-            </button>
-          </div>
+      {viewMode === 'view' && (!isServerLoading) && (
+        <div className="share-footer">
         <button
           onClick={() => {
             // Clear any mic-specific URL parameters for main calendar share
@@ -1443,7 +1446,7 @@ const MicFinder = () => {
         </button>
         </div>
         )}
-    </div>
+    </main>
     {/* Password Change Modal */}
     {showPasswordChange && user && (
       <PasswordChange
@@ -1455,11 +1458,12 @@ const MicFinder = () => {
 
     {/* Share Modal */}
     {showShareModal && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
         <div className="bg-white rounded-lg p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-lg font-semibold">Share Open Mic</h3>
             <button
+              aria-label="Close share dialog"
               onClick={() => setShowShareModal(false)}
               className="text-gray-500 hover:text-gray-700"
             >
@@ -1477,7 +1481,7 @@ const MicFinder = () => {
                 type="text"
                 value={window.location.href}
                 readOnly
-                className="flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-gray-50"
+                className="min-w-0 flex-1 border border-gray-300 rounded px-3 py-2 text-sm bg-gray-50"
               />
               <button
                 onClick={() => copyToClipboard(window.location.href)}
@@ -1521,7 +1525,7 @@ const MicFinder = () => {
       </div>
     )}
 
-      <div className="bottom-0 w-full flex justify-end mt-4">
+      <footer className="account-footer">
         {!user ? (
           <form
             onSubmit={handleLogin}
@@ -1530,6 +1534,7 @@ const MicFinder = () => {
             <input
               type="text"
               placeholder="Username"
+              aria-label="Username"
               value={loginForm.username}
               onChange={(e) => setLoginForm(prev => ({ ...prev, username: e.target.value }))}
               className="border p-1 rounded text-sm w-24"
@@ -1539,6 +1544,7 @@ const MicFinder = () => {
               type="password"
               placeholder="Password"
               value={loginForm.password}
+              aria-label="Password"
               onChange={(e) => setLoginForm(prev => ({ ...prev, password: e.target.value }))}
               className="border p-1 rounded text-sm w-24"
               required
@@ -1562,7 +1568,7 @@ const MicFinder = () => {
             <button onClick={handleLogout} className="bg-gray-200 text-gray-700 px-2 py-1 rounded text-sm hover:bg-gray-300">Logout</button>
           </div>
         )}
-      </div>
+      </footer>
     </>
   );
 };
