@@ -240,6 +240,15 @@ app.post('/auth/change-password', async (req, res) => {
   }
 });
 
+const isIsoDate = (value) => {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return false;
+  }
+
+  const date = new Date(`${value}T00:00:00Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+};
+
 const validateMicData = (req, res, next) => {
   const required = [
     'name',
@@ -253,6 +262,8 @@ const validateMicData = (req, res, next) => {
     'edit_version', // same deal with edit_version
     'contactInfo',
     'recurrence',
+    'recurrenceEndDate',
+    'excludedDates',
     'signupInstructions'
   ];
   const missing = required.filter(field => !req.body[field]);
@@ -268,8 +279,35 @@ const validateMicData = (req, res, next) => {
       error: `Unknown fields not allowed: ${unknown.join(', ')}`
     });
   }
+  if (req.body.recurrence !== undefined && typeof req.body.recurrence !== 'string') {
+    return res.status(400).json({ error: 'recurrence must be a string' });
+  }
+  if (req.body.recurrenceEndDate !== undefined) {
+    if (!isIsoDate(req.body.recurrenceEndDate)) {
+      return res.status(400).json({ error: 'recurrenceEndDate must be a valid YYYY-MM-DD date' });
+    }
+    if (!req.body.recurrence) {
+      return res.status(400).json({ error: 'recurrenceEndDate requires recurrence' });
+    }
+    if (isIsoDate(req.body.startDate) && req.body.recurrenceEndDate < req.body.startDate) {
+      return res.status(400).json({ error: 'recurrenceEndDate cannot be before startDate' });
+    }
+  }
+  if (req.body.excludedDates !== undefined) {
+    if (!Array.isArray(req.body.excludedDates) ||
+        req.body.excludedDates.some(date => !isIsoDate(date))) {
+      return res.status(400).json({ error: 'excludedDates must be an array of valid YYYY-MM-DD dates' });
+    }
+    if (new Set(req.body.excludedDates).size !== req.body.excludedDates.length) {
+      return res.status(400).json({ error: 'excludedDates cannot contain duplicate dates' });
+    }
+    if (req.body.excludedDates.length > 0 && !req.body.recurrence) {
+      return res.status(400).json({ error: 'excludedDates requires recurrence' });
+    }
+    req.body.excludedDates.sort();
+  }
   allFields.forEach(field => {
-    if (req.body[field]) {
+    if (typeof req.body[field] === 'string') {
       req.body[field] = sanitizeHtml(req.body[field], {
         allowedTags: [],          // Allow no HTML tags
         allowedAttributes: {},     // Allow no HTML attributes
@@ -367,6 +405,16 @@ app.get('/mics', async (req, res) => {
  *                 type: string
  *               recurrence:
  *                 type: string
+ *               recurrenceEndDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Last date on which the recurrence may occur
+ *               excludedDates:
+ *                 type: array
+ *                 description: Date-only recurrence exceptions
+ *                 items:
+ *                   type: string
+ *                   format: date
  *               signupInstructions:
  *                 type: string
  *               showTime:
@@ -506,6 +554,16 @@ app.get('/mics/:id', async (req, res) => {
  *                 type: string
  *               recurrence:
  *                 type: string
+ *               recurrenceEndDate:
+ *                 type: string
+ *                 format: date
+ *                 description: Last date on which the recurrence may occur
+ *               excludedDates:
+ *                 type: array
+ *                 description: Date-only recurrence exceptions
+ *                 items:
+ *                   type: string
+ *                   format: date
  *               signupInstructions:
  *                 type: string
  *               showTime:

@@ -12,6 +12,14 @@ Source code is licensed under The MIT License (see LICENSE.md).
 A public swagger API is available to backup (almost) all data on micfinder. For security reasons, user info is not accessible.
 
 https://micfinder-backend.onrender.com/api-docs/
+## Recurring events
+
+Editors can set weekly or monthly recurrence, an optional end date, and individual
+dates to skip. Selecting an occurrence in the calendar also provides a
+`Skip this date` action; skipped dates can be restored from that occurrence or
+from the recurrence editor. Recurrence end and exception dates use local
+`YYYY-MM-DD` values to preserve date-only calendar semantics.
+
 
 # Development
 ## Setup

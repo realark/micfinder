@@ -142,9 +142,11 @@ describe('API Endpoints', () => {
     let micData = {
       name: 'Test Open Mic',
       location: 'Test Venue',
-      startDate: '20250101',
+      startDate: '2025-01-01',
       contactInfo: 'test@venue.com',
       recurrence: 'RRULE:FREQ=WEEKLY;BYDAY=MO',
+      recurrenceEndDate: '2025-12-31',
+      excludedDates: ['2025-01-06'],
       showTime: '19:00',
     };
     const authToken = (await request(app)
@@ -159,6 +161,16 @@ describe('API Endpoints', () => {
           .set('Authorization', `Bearer badtoken`)
           .send(micData)
           .expect(401);
+      await request(app)
+        .post('/mics')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ ...micData, excludedDates: ['2025-02-30'] })
+        .expect(400);
+      await request(app)
+        .post('/mics')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ ...micData, recurrenceEndDate: '2024-12-31' })
+        .expect(400);
       const createRes = await request(app)
         .post('/mics')
         .set('Authorization', `Bearer ${authToken}`)
@@ -189,7 +201,7 @@ describe('API Endpoints', () => {
         ...micData,
         name: 'Updated Open Mic',
         location: 'Updated Venue',
-        startDate: '20240301',
+        startDate: '2024-03-01',
         showTime: '19:30',
         contactInfo: 'updated@venue.com'
       };

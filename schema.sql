@@ -27,6 +27,10 @@ CREATE TABLE app_user (
   password_hash TEXT NOT NULL
 );
 
+-- Recurring mic records may also contain recurrenceEndDate (YYYY-MM-DD) and
+-- excludedDates (an array of YYYY-MM-DD values). These stay in JSONB so
+-- existing databases require no table migration when the fields are introduced.
+
 CREATE TABLE mic (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   data JSONB NOT NULL,

@@ -1,10 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { RRule, RRuleSet, rrulestr } from 'rrule';
+import { RRule, rrulestr } from 'rrule';
 import RecurrenceSelector from './RecurrenceSelector';
 import PasswordChange from './PasswordChange';
 import QRCode from 'qrcode';
 const API_URL = import.meta.env.VITE_MICFINDER_API_URL;
 const defaultSignupInstructions = "";
+const parseMicDate = (dateString) => {
+  if (dateString.includes('T')) {
+    return new Date(dateString);
+  }
+
+  const [year, month, day] = dateString.split('-').map(Number);
+  return new Date(year, month - 1, day, 12, 0, 0);
+};
+
+const formatLocalDate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const isExcludedDate = (mic, date) =>
+  (mic.excludedDates || []).includes(formatLocalDate(date));
+
 
 // Function to check if JWT token is expired
 const isTokenExpired = (token) => {
@@ -38,10 +57,13 @@ const MicFinder = () => {
     contactInfo: '',
     location: '',
     recurrence: '',
+    recurrenceEndDate: '',
+    excludedDates: [],
     signupInstructions: '',
     startDate: '',
     showTime: ''
   });
+  const [selectedOccurrenceDate, setSelectedOccurrenceDate] = useState('');
   // State for user
   const [user, setUser] = useState(null);
   // State for login form
@@ -212,7 +234,19 @@ const MicFinder = () => {
   // Handle form input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setCurrentMic(prev => ({ ...prev, [name]: value }));
+    setCurrentMic(prev => {
+      if (name !== 'startDate') {
+        return { ...prev, [name]: value };
+      }
+      return {
+        ...prev,
+        startDate: value,
+        recurrenceEndDate: prev.recurrenceEndDate && prev.recurrenceEndDate < value
+          ? ''
+          : prev.recurrenceEndDate,
+        excludedDates: (prev.excludedDates || []).filter(date => date >= value),
+      };
+    });
   };
 
   // Handle form submission
@@ -243,7 +277,7 @@ const MicFinder = () => {
 
       // Filter out empty string fields
       const micDataToSend = Object.fromEntries(
-        Object.entries(currentMic).filter(([_, value]) => value !== '')
+        Object.entries(currentMic).filter(([, value]) => value !== '')
       );
 
       if (viewMode === 'add') {
@@ -289,6 +323,8 @@ const MicFinder = () => {
         contactInfo: '',
         location: '',
         recurrence: '',
+        recurrenceEndDate: '',
+        excludedDates: [],
         signupInstructions: '',
         startDate: '',
         showTime: ''
@@ -345,7 +381,13 @@ const MicFinder = () => {
       }
 
       const result = await response.json();
-      setCurrentMic(result.mic);
+      const mic = result.mic;
+      setCurrentMic({
+        ...mic,
+        recurrenceEndDate: mic.recurrenceEndDate || '',
+        excludedDates: mic.excludedDates || [],
+      });
+      setSelectedOccurrenceDate('');
       setViewMode('edit');
     } catch (error) {
       console.error('Error fetching open mic details:', error);
@@ -353,7 +395,7 @@ const MicFinder = () => {
     }
   };
 
-  const viewOpenMic = async (id) => {
+  const viewOpenMic = async (id, occurrenceDate = '') => {
     try {
       // Update URL with mic ID
       const url = new URL(window.location);
@@ -368,13 +410,70 @@ const MicFinder = () => {
       }
 
       const result = await response.json();
-      setCurrentMic(result.mic);
+      const mic = result.mic;
+      setCurrentMic({
+        ...mic,
+        recurrenceEndDate: mic.recurrenceEndDate || '',
+        excludedDates: mic.excludedDates || [],
+      });
+      setSelectedOccurrenceDate(occurrenceDate);
       setViewMode('view-mic');
     } catch (error) {
       console.error('Error fetching open mic details:', error);
       alert(`Error: ${error.message}`);
     }
   };
+  const updateOccurrenceException = async (shouldExclude) => {
+    if (!selectedOccurrenceDate) return;
+
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (!authToken || isTokenExpired(authToken)) {
+        setUser(null);
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('authToken');
+        alert('Your session has expired. Please log in again.');
+        return;
+      }
+
+      const latestResponse = await fetch(`${API_URL}/mics/${currentMic.id}`);
+      if (!latestResponse.ok) {
+        throw new Error('Failed to fetch the latest open mic details');
+      }
+      const latestMic = (await latestResponse.json()).mic;
+      const excludedDates = new Set(latestMic.excludedDates || []);
+      if (shouldExclude) {
+        excludedDates.add(selectedOccurrenceDate);
+      } else {
+        excludedDates.delete(selectedOccurrenceDate);
+      }
+
+      const response = await fetch(`${API_URL}/mics/${currentMic.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({
+          ...latestMic,
+          excludedDates: [...excludedDates].sort(),
+        })
+      });
+      const result = await response.json();
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to update this occurrence');
+      }
+
+      setCurrentMic(result.mic);
+      setOpenMics(prev => prev.map(mic =>
+        mic.id === result.mic.id ? result.mic : mic
+      ));
+    } catch (error) {
+      console.error('Error updating recurrence exception:', error);
+      alert(`Error: ${error.message}`);
+    }
+  };
+
 
   // Delete an open mic
   const deleteOpenMic = async (id, edit_version) => {
@@ -489,74 +588,40 @@ const MicFinder = () => {
   const getEventsForDate = (dayOrDate) => {
     if (!dayOrDate) return [];
 
-    // Handle different input types
     let date;
     if (typeof dayOrDate === 'number') {
-      // It's a day number from old month view implementation
-      const year = currentDate.getFullYear();
-      const month = currentDate.getMonth();
-      date = new Date(year, month, dayOrDate);
+      date = new Date(currentDate.getFullYear(), currentDate.getMonth(), dayOrDate);
     } else if (dayOrDate.day !== undefined) {
-      // It's an object with day, month, year from new month view implementation
-      const { day, month, year } = dayOrDate;
-      date = new Date(year, month, day);
+      date = new Date(dayOrDate.year, dayOrDate.month, dayOrDate.day);
     } else {
-      // It's already a Date object from week view
       date = new Date(dayOrDate);
     }
-
-    // Set time to noon to avoid timezone issues
     date.setHours(12, 0, 0, 0);
 
-    // Filter events that occur on this day
     return openMics.filter(mic => {
-      // Parse the start date more carefully to avoid timezone issues
-      // If mic.startDate is in YYYY-MM-DD format, parse it as local date
-      let startDate;
-      if (mic.startDate.includes('T')) {
-        // It's a full datetime string
-        startDate = new Date(mic.startDate);
-      } else {
-        // It's a date-only string (YYYY-MM-DD), parse as local date
-        const [year, month, day] = mic.startDate.split('-').map(num => parseInt(num, 10));
-        startDate = new Date(year, month - 1, day); // month is 0-indexed
-      }
+      const startDate = parseMicDate(mic.startDate);
       startDate.setHours(12, 0, 0, 0);
 
-      // Check if this is the exact date (one-time event)
-      if (startDate.getDate() === date.getDate() &&
-        startDate.getMonth() === date.getMonth() &&
-        startDate.getFullYear() === date.getFullYear() &&
-        (!mic.recurrence || mic.recurrence.trim() === '')) {
-          return true;
-        }
-
-      // For recurring events, make sure we're not showing events before their start date
-      if (date < startDate) {
+      if (!mic.recurrence || mic.recurrence.trim() === '') {
+        return formatLocalDate(startDate) === formatLocalDate(date);
+      }
+      if (date < startDate ||
+          (mic.recurrenceEndDate && formatLocalDate(date) > mic.recurrenceEndDate) ||
+          isExcludedDate(mic, date)) {
         return false;
       }
 
-      if (mic.recurrence && mic.recurrence.trim() !== '') {
-        try {
-          // Parse the rrule string
-          const rule = rrulestr(mic.recurrence, {
-            dtstart: new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 12, 0, 0)
-          });
-
-          // Check if this date is in the recurrence set
-          const occurrences = rule.between(
-            new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0),
-            new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59),
-            true
-          );
-
-          return occurrences.length > 0;
-        } catch (error) {
-          console.error('Error parsing rrule:', error);
-        }
+      try {
+        const rule = rrulestr(mic.recurrence, { dtstart: startDate });
+        return rule.between(
+          new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0),
+          new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59),
+          true
+        ).length > 0;
+      } catch (error) {
+        console.error('Error parsing rrule:', error);
+        return false;
       }
-
-      return false;
     });
   };
 
@@ -608,42 +673,40 @@ const MicFinder = () => {
     return `${hours12}${minutes ? `:${minutes.toString().padStart(2, '0')}` : ''}${period}`;
   };
 
-  // Format RRule to human-readable text
-  const formatRecurrence = (rruleString) => {
-    if (!rruleString) return 'One-time event';
+  // Format recurrence settings as human-readable text
+  const formatRecurrence = (mic) => {
+    if (!mic.recurrence) return 'One-time event';
 
     try {
-      const rule = rrulestr(rruleString);
-      const options = rule.options;
+      const options = rrulestr(mic.recurrence).options;
+      let description = mic.recurrence;
 
       if (options.freq === RRule.WEEKLY) {
         const days = options.byweekday ? options.byweekday.map(day => {
-          // RRule uses 0=MO, 1=TU, etc. but we need 0=SU, 1=MO, etc.
-          // Convert RRule day number to our day number
           const dayNum = (day === 6) ? 0 : day + 1;
           const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
           return dayNames[dayNum];
         }).join(', ') : '';
-
         const interval = options.interval || 1;
-        if (interval === 1) {
-          return `Weekly on ${days}`;
-        } else {
-          return `Every ${interval} weeks on ${days}`;
-        }
+        description = interval === 1
+          ? `Weekly${days ? ` on ${days}` : ''}`
+          : `Every ${interval} weeks${days ? ` on ${days}` : ''}`;
       } else if (options.freq === RRule.MONTHLY) {
         const interval = options.interval || 1;
-        if (interval === 1) {
-          return 'Monthly';
-        } else {
-          return `Every ${interval} months`;
-        }
+        description = interval === 1 ? 'Monthly' : `Every ${interval} months`;
       }
 
-      return rruleString;
+      if (mic.recurrenceEndDate) {
+        description += ` until ${mic.recurrenceEndDate}`;
+      }
+      const excludedCount = (mic.excludedDates || []).length;
+      if (excludedCount > 0) {
+        description += `; ${excludedCount} skipped ${excludedCount === 1 ? 'date' : 'dates'}`;
+      }
+      return description;
     } catch (error) {
       console.error('Error parsing rrule:', error);
-      return rruleString;
+      return mic.recurrence;
     }
   };
 
@@ -656,35 +719,26 @@ const MicFinder = () => {
   const getNextShowDate = (mic) => {
     if (!mic.startDate) return null;
 
-    // Parse the start date more carefully to avoid timezone issues
-    let startDate;
-    if (mic.startDate.includes('T')) {
-      // It's a full datetime string
-      startDate = new Date(mic.startDate);
-    } else {
-      // It's a date-only string (YYYY-MM-DD), parse as local date
-      const [year, month, day] = mic.startDate.split('-').map(num => parseInt(num, 10));
-      startDate = new Date(year, month - 1, day); // month is 0-indexed
-    }
+    const startDate = parseMicDate(mic.startDate);
     startDate.setHours(12, 0, 0, 0);
-
     const now = new Date();
-    now.setHours(0, 0, 0, 0); // Start of today
+    now.setHours(0, 0, 0, 0);
 
-    // If it's a one-time event
     if (!mic.recurrence || mic.recurrence.trim() === '') {
-      // Return the start date if it's today or in the future
       return startDate >= now ? startDate : null;
     }
 
-    // For recurring events
     try {
-      const rule = rrulestr(mic.recurrence, {
-        dtstart: new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 12, 0, 0)
-      });
+      const rule = rrulestr(mic.recurrence, { dtstart: startDate });
+      let nextOccurrence = rule.after(now, true);
 
-      // Get the next occurrence after today
-      const nextOccurrence = rule.after(now, true); // true means inclusive of today
+      while (nextOccurrence && isExcludedDate(mic, nextOccurrence)) {
+        nextOccurrence = rule.after(nextOccurrence, false);
+      }
+      if (nextOccurrence && mic.recurrenceEndDate &&
+          formatLocalDate(nextOccurrence) > mic.recurrenceEndDate) {
+        return null;
+      }
       return nextOccurrence;
     } catch (error) {
       console.error('Error parsing rrule for next show:', error);
@@ -769,7 +823,10 @@ const MicFinder = () => {
                     <div
                       key={event.id}
                       className="text-xs p-0.5 my-0.5 bg-blue-100 rounded cursor-pointer"
-                      onClick={() => viewOpenMic(event.id)}
+                      onClick={() => viewOpenMic(
+                        event.id,
+                        formatLocalDate(new Date(dayObj.year, dayObj.month, dayObj.day))
+                      )}
                     >
                       <div className="line-clamp-2">{event.name} {formatTo12Hour(event.showTime)}</div>
                     </div>
@@ -839,7 +896,7 @@ const MicFinder = () => {
                     <div
                       key={event.id}
                       className="text-xs p-0.5 my-0.5 bg-blue-100 rounded cursor-pointer"
-                      onClick={() => viewOpenMic(event.id)}
+                      onClick={() => viewOpenMic(event.id, formatLocalDate(date))}
                     >
                       <div className="line-clamp-2">{event.name} {formatTo12Hour(event.showTime)}</div>
                     </div>
@@ -975,10 +1032,10 @@ const MicFinder = () => {
   // Download QR code
   const downloadQRCode = () => {
     if (!qrCodeDataUrl) return;
-    
+
     const link = document.createElement('a');
     // Use different filename based on whether we're viewing a specific mic or the main calendar
-    const filename = viewMode === 'view-mic' && currentMic.name 
+    const filename = viewMode === 'view-mic' && currentMic.name
       ? `${currentMic.name}-qr-code.png`
       : 'micfinder-qr-code.png';
     link.download = filename;
@@ -1108,6 +1165,18 @@ const MicFinder = () => {
               <RecurrenceSelector
                 value={currentMic.recurrence}
                 onChange={(value) => setCurrentMic(prev => ({ ...prev, recurrence: value }))}
+                startDate={currentMic.startDate}
+                recurrenceEndDate={currentMic.recurrenceEndDate || ''}
+                onRecurrenceEndDateChange={(value) => setCurrentMic(prev => ({
+                  ...prev,
+                  recurrenceEndDate: value,
+                  excludedDates: (prev.excludedDates || []).filter(date => !value || date <= value),
+                }))}
+                excludedDates={currentMic.excludedDates || []}
+                onExcludedDatesChange={(value) => setCurrentMic(prev => ({
+                  ...prev,
+                  excludedDates: value,
+                }))}
               />
             </div>
 
@@ -1167,6 +1236,7 @@ const MicFinder = () => {
                   url.searchParams.delete('id');
                   window.history.pushState({}, '', url);
                   setViewMode('view');
+                  setSelectedOccurrenceDate('');
                 }}
                 className="text-gray-500 hover:text-gray-700 ml-2"
               >
@@ -1178,7 +1248,7 @@ const MicFinder = () => {
           <div className="grid grid-cols-1 md:grid-cols-1 gap-4 mb-6">
             <div className="flex items-start">
               <span className="text-gray-600 font-medium w-28">Show Time:</span>
-              <span>{currentMic.recurrence && formatRecurrence(currentMic.recurrence) + ","} {formatTo12Hour(currentMic.showTime)}</span>
+              <span>{currentMic.recurrence && `${formatRecurrence(currentMic)},`} {formatTo12Hour(currentMic.showTime)}</span>
             </div>
             <div className="flex items-start">
               <span className="text-gray-600 font-medium w-28">Location:</span>
@@ -1189,6 +1259,26 @@ const MicFinder = () => {
               <span>{currentMic.contactInfo}</span>
             </div>
           </div>
+          {selectedOccurrenceDate && currentMic.recurrence && (
+            <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+              <h3 className="font-semibold text-purple-800">Selected occurrence</h3>
+              <p className="text-purple-700">{selectedOccurrenceDate}</p>
+              {user && (
+                <button
+                  type="button"
+                  onClick={() => updateOccurrenceException(
+                    !(currentMic.excludedDates || []).includes(selectedOccurrenceDate)
+                  )}
+                  className="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1 rounded"
+                >
+                  {(currentMic.excludedDates || []).includes(selectedOccurrenceDate)
+                    ? 'Restore this date'
+                    : 'Skip this date'}
+                </button>
+              )}
+            </div>
+          )}
+
 
           {/* Next Show Box */}
           {(() => {
@@ -1249,8 +1339,10 @@ const MicFinder = () => {
                         contactInfo: '',
                         location: '',
                         recurrence: '',
+                        recurrenceEndDate: '',
+                        excludedDates: [],
                         signupInstructions: '',
-                        startDate: new Date().toISOString().split('T')[0],
+                        startDate: formatLocalDate(new Date()),
                         showTime: ''
                       });
                       setViewMode('add');
@@ -1290,7 +1382,7 @@ const MicFinder = () => {
                     <div className="grid grid-cols-1 md:grid-cols-1 gap-2 mt-2">
                       <div className="flex items-start">
                         <span className="text-gray-600 font-medium w-28">Show Time:</span>
-                        <span>{mic.recurrence && formatRecurrence(mic.recurrence) + ","} {formatTo12Hour(mic.showTime)}</span>
+                        <span>{mic.recurrence && `${formatRecurrence(mic)},`} {formatTo12Hour(mic.showTime)}</span>
                       </div>
                       <div className="flex items-start">
                         <span className="text-gray-600 font-medium w-28">Location:</span>
