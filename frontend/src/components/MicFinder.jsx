@@ -1074,7 +1074,6 @@ const MicFinder = () => {
       <header className="site-header">
         <p className="site-eyebrow">Boise comedy · Community calendar</p>
         <h1>Find your next open mic.</h1>
-        <p className="site-description">Standup comedy in Boise. Local stages, shared by the community.</p>
       </header>
 
       {/* View toggle buttons */}
