@@ -11,28 +11,52 @@ const WEEKDAYS = [
   { value: 'SU', label: 'Sunday', rruleValue: RRule.SU },
 ];
 
-const parseRecurrence = (value) => {
-  if (!value) {
-    return { isRecurring: false, frequency: 'WEEKLY', interval: 1, byDay: [] };
-  }
+const MONTHLY_POSITIONS = [
+  { value: 1, label: 'First' },
+  { value: 2, label: 'Second' },
+  { value: 3, label: 'Third' },
+  { value: 4, label: 'Fourth' },
+  { value: -1, label: 'Last' },
+];
+
+const parseRecurrence = (value, startDate) => {
+  const startWeekday = startDate ? new Date(`${startDate}T12:00:00`).getDay() : 1;
+  const defaults = {
+    isRecurring: false,
+    frequency: 'WEEKLY',
+    interval: 1,
+    byDay: [],
+    monthlyMode: 'date',
+    monthlyPosition: 1,
+    monthlyWeekday: WEEKDAYS[(startWeekday + 6) % 7].value,
+  };
+  if (!value) return defaults;
 
   try {
     const rule = RRule.fromString(value);
     return {
+      ...defaults,
       isRecurring: true,
       frequency: rule.options.freq === RRule.MONTHLY ? 'MONTHLY' : 'WEEKLY',
       interval: rule.options.interval || 1,
       byDay: rule.options.byweekday
         ? rule.options.byweekday.map(day => WEEKDAYS[day].value)
         : [],
+      monthlyMode: rule.options.bysetpos?.length === 1 && rule.options.byweekday?.length === 1
+        ? 'weekday'
+        : 'date',
+      monthlyPosition: rule.options.bysetpos?.[0] ?? defaults.monthlyPosition,
+      monthlyWeekday: rule.options.byweekday?.length === 1
+        ? WEEKDAYS[rule.options.byweekday[0]].value
+        : defaults.monthlyWeekday,
     };
   } catch (error) {
     console.error('Error parsing RRule:', error);
-    return { isRecurring: false, frequency: 'WEEKLY', interval: 1, byDay: [] };
+    return defaults;
   }
 };
 
-const buildRecurrence = ({ frequency, interval, byDay }) => {
+const buildRecurrence = ({ frequency, interval, byDay, monthlyMode, monthlyPosition, monthlyWeekday }) => {
   const options = {
     freq: frequency === 'WEEKLY' ? RRule.WEEKLY : RRule.MONTHLY,
     interval,
@@ -42,6 +66,10 @@ const buildRecurrence = ({ frequency, interval, byDay }) => {
     options.byweekday = byDay.map(day =>
       WEEKDAYS.find(weekday => weekday.value === day).rruleValue
     );
+  }
+  if (frequency === 'MONTHLY' && monthlyMode === 'weekday') {
+    options.byweekday = WEEKDAYS.find(day => day.value === monthlyWeekday).rruleValue;
+    options.bysetpos = monthlyPosition;
   }
 
   return new RRule(options).toString();
@@ -56,7 +84,7 @@ const RecurrenceSelector = ({
   excludedDates,
   onExcludedDatesChange,
 }) => {
-  const [options, setOptions] = useState(() => parseRecurrence(value));
+  const [options, setOptions] = useState(() => parseRecurrence(value, startDate));
   const [dateToExclude, setDateToExclude] = useState('');
   const [exclusionError, setExclusionError] = useState('');
 
@@ -159,6 +187,49 @@ const RecurrenceSelector = ({
                   </label>
                 ))}
               </div>
+            </fieldset>
+          )}
+
+          {options.frequency === 'MONTHLY' && (
+            <fieldset className="min-w-0 space-y-2">
+              <legend className="mb-1">Monthly schedule:</legend>
+              <select
+                aria-label="Monthly schedule"
+                value={options.monthlyMode}
+                onChange={(event) => updateOptions({ monthlyMode: event.target.value })}
+                className="border rounded p-1 max-w-full"
+              >
+                <option value="date">Same day of the month as the start date</option>
+                <option value="weekday">On a specific weekday</option>
+              </select>
+              {options.monthlyMode === 'weekday' && (
+                <div className="flex flex-wrap items-center gap-2">
+                  <span>On the</span>
+                  <select
+                    aria-label="Weekday occurrence"
+                    value={options.monthlyPosition}
+                    onChange={(event) => updateOptions({ monthlyPosition: Number(event.target.value) })}
+                    className="border rounded p-1"
+                  >
+                    {MONTHLY_POSITIONS.map(position => (
+                      <option key={position.value} value={position.value}>{position.label}</option>
+                    ))}
+                  </select>
+                  <select
+                    aria-label="Monthly weekday"
+                    value={options.monthlyWeekday}
+                    onChange={(event) => updateOptions({ monthlyWeekday: event.target.value })}
+                    className="border rounded p-1"
+                  >
+                    {WEEKDAYS.map(day => (
+                      <option key={day.value} value={day.value}>{day.label}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+              {options.monthlyMode === 'date' && (
+                <p className="text-sm text-gray-500">Months without that date are skipped.</p>
+              )}
             </fieldset>
           )}
 

@@ -405,6 +405,11 @@ app.get('/mics', async (req, res) => {
  *                 type: string
  *               recurrence:
  *                 type: string
+ *                 description: >
+ *                   RFC 5545-style RRULE. Monthly rules support a day of the month
+ *                   (BYMONTHDAY=15) or an ordinal weekday (BYDAY=TU;BYSETPOS=1
+ *                   for the first Tuesday, BYSETPOS=-1 for the last Tuesday).
+ *                 example: 'RRULE:FREQ=MONTHLY;INTERVAL=1;BYDAY=TU;BYSETPOS=1'
  *               recurrenceEndDate:
  *                 type: string
  *                 format: date
@@ -554,6 +559,11 @@ app.get('/mics/:id', async (req, res) => {
  *                 type: string
  *               recurrence:
  *                 type: string
+ *                 description: >
+ *                   RFC 5545-style RRULE. Monthly rules support a day of the month
+ *                   (BYMONTHDAY=15) or an ordinal weekday (BYDAY=TU;BYSETPOS=1
+ *                   for the first Tuesday, BYSETPOS=-1 for the last Tuesday).
+ *                 example: 'RRULE:FREQ=MONTHLY;INTERVAL=1;BYDAY=TU;BYSETPOS=-1'
  *               recurrenceEndDate:
  *                 type: string
  *                 format: date

@@ -695,6 +695,12 @@ const MicFinder = () => {
       } else if (options.freq === RRule.MONTHLY) {
         const interval = options.interval || 1;
         description = interval === 1 ? 'Monthly' : `Every ${interval} months`;
+        const positions = { 1: 'first', 2: 'second', 3: 'third', 4: 'fourth', '-1': 'last' };
+        if (options.bysetpos?.length === 1 && options.byweekday?.length === 1 &&
+            positions[options.bysetpos[0]]) {
+          const weekdays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+          description += ` on the ${positions[options.bysetpos[0]]} ${weekdays[options.byweekday[0]]}`;
+        }
       }
 
       if (mic.recurrenceEndDate) {

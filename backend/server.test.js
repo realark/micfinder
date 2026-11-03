@@ -10,6 +10,7 @@ const crypto = require('crypto');
 
 describe('API Endpoints', () => {
   let container;
+  let client;
   let app, shutdown;
 
   beforeAll(async () => {
@@ -23,7 +24,7 @@ describe('API Endpoints', () => {
       .start();
 
     const port = container.getMappedPort(5432);
-    const client = new Client({
+    client = new Client({
       host: container.getHost(),
       port: port,
       user: 'openmics',
@@ -42,7 +43,6 @@ describe('API Endpoints', () => {
       VALUES ($1, 'Test User', $2)
       RETURNING id
     `, [testEmail, passwordHash]);
-    await client.end();
     process.env.JWT_SECRET="unittest";
     process.env.PG_HOST = container.getHost();
     process.env.PG_PORT = port;
@@ -55,6 +55,9 @@ describe('API Endpoints', () => {
 
   afterAll(async () => {
     await shutdown();
+    if (client) {
+      await client.end();
+    }
     if (container) {
       await container.stop();
     }
@@ -319,5 +322,84 @@ describe('API Endpoints', () => {
       .set('Authorization', `Bearer ${authToken}`)
       .send({ edit_version: retrievedMic.edit_version })
       .expect(200);
+  });
+
+  describe('monthly recurrence', () => {
+    const firstTuesday = 'RRULE:FREQ=MONTHLY;INTERVAL=1;BYDAY=TU;BYSETPOS=1';
+    const lastTuesday = 'RRULE:FREQ=MONTHLY;INTERVAL=1;BYDAY=TU;BYSETPOS=-1';
+    const monthlyDate = 'RRULE:FREQ=MONTHLY;BYMONTHDAY=15';
+    let authToken;
+
+    beforeAll(async () => {
+      const res = await request(app)
+        .post('/auth/login')
+        .send({ email: testEmail, password: testPassword })
+        .expect(200);
+      authToken = res.body.token;
+    });
+
+    it.each([
+      ['first weekday', firstTuesday, lastTuesday],
+      ['last weekday', lastTuesday, firstTuesday],
+      ['day of month', monthlyDate, lastTuesday],
+    ])('persists and updates monthly %s through the API', async (_, recurrence, updatedRecurrence) => {
+      const createRes = await request(app)
+        .post('/mics')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({
+          name: 'Monthly Open Mic',
+          location: 'Monthly Venue',
+          startDate: '2026-01-01',
+          showTime: '19:00',
+          recurrence,
+          recurrenceEndDate: '2026-12-31',
+          excludedDates: ['2026-03-31'],
+        })
+        .expect(200);
+      const createdMic = createRes.body.mic;
+      expect(createdMic.recurrence).toBe(recurrence);
+      expect(createdMic.edit_version).toBe(0);
+
+      const getRes = await request(app)
+        .get(`/mics/${createdMic.id}`)
+        .expect(200);
+      expect(getRes.body.mic).toEqual(createdMic);
+      const stored = await client.query('SELECT data FROM mic WHERE id = $1', [createdMic.id]);
+      expect(stored.rows[0].data).toEqual(createdMic);
+
+      const updateRes = await request(app)
+        .put(`/mics/${createdMic.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ ...createdMic, recurrence: updatedRecurrence })
+        .expect(200);
+      const updatedMic = updateRes.body.mic;
+      expect(updatedMic).toEqual({
+        ...createdMic,
+        recurrence: updatedRecurrence,
+        edit_version: createdMic.edit_version + 1,
+      });
+      const updatedGetRes = await request(app)
+        .get(`/mics/${createdMic.id}`)
+        .expect(200);
+      expect(updatedGetRes.body.mic).toEqual(updatedMic);
+      const listRes = await request(app).get('/mics').expect(200);
+      expect(listRes.body.mics).toContainEqual(updatedMic);
+      const updatedStored = await client.query('SELECT data FROM mic WHERE id = $1', [createdMic.id]);
+      expect(updatedStored.rows[0].data).toEqual(updatedMic);
+
+      await request(app)
+        .delete(`/mics/${createdMic.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ edit_version: updatedMic.edit_version })
+        .expect(200);
+    });
+
+    it('rejects malformed monthly positions in database writes', async () => {
+      await expect(client.query(`
+        INSERT INTO mic (data, last_edited_by)
+        SELECT $1::jsonb, id FROM app_user WHERE email = $2
+      `, [{ recurrence: 'RRULE:FREQ=MONTHLY;BYDAY=TU;BYSETPOS=--1' }, testEmail]))
+        .rejects.toMatchObject({ code: '23514', constraint: 'rrule_check' });
+    });
   });
 });

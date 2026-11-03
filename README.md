@@ -15,10 +15,24 @@ https://micfinder-backend.onrender.com/api-docs/
 ## Recurring events
 
 Editors can set weekly or monthly recurrence, an optional end date, and individual
-dates to skip. Selecting an occurrence in the calendar also provides a
-`Skip this date` action; skipped dates can be restored from that occurrence or
-from the recurrence editor. Recurrence end and exception dates use local
-`YYYY-MM-DD` values to preserve date-only calendar semantics.
+dates to skip. Monthly schedules can repeat on the same day of the month as the
+start date, or on the **first, second, third, fourth, or last** occurrence of a
+weekday (for example, the first Tuesday or last Friday). The interval also supports
+schedules such as every two months on the third Thursday.
+
+The start date is the earliest allowed occurrence; a weekday schedule starts on
+the first matching date on or after it. Date-based monthly schedules skip months
+without that date (for example, the 31st does not occur in February).
+
+Selecting an occurrence in the calendar also provides a `Skip this date` action;
+skipped dates can be restored from that occurrence or from the recurrence editor.
+Recurrence end and exception dates use local `YYYY-MM-DD` values to preserve
+date-only calendar semantics. Saved schedules retain their weekday and position
+when reopened for editing, and event descriptions display the full monthly pattern.
+
+Monthly weekday rules use `BYDAY` with `BYSETPOS`, for example:
+`RRULE:FREQ=MONTHLY;BYDAY=TU;BYSETPOS=1` for the first Tuesday and
+`RRULE:FREQ=MONTHLY;BYDAY=FR;BYSETPOS=-1` for the last Friday.
 
 ## Browsing on desktop and mobile
 
