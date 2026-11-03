@@ -19,7 +19,7 @@
     "jsonwebtoken": "^9.0.3",
     "pg": "^8.14.1",
     "sanitize-html": "^2.15.0",
-    "swagger-jsdoc": "^6.2.8",
+    "swagger-jsdoc": "^6.3.0",
     "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
