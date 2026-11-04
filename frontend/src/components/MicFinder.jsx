@@ -1,9 +1,34 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { RRule, rrulestr } from 'rrule';
 import RecurrenceSelector from './RecurrenceSelector';
 import PasswordChange from './PasswordChange';
 import QRCode from 'qrcode';
 const API_URL = import.meta.env.VITE_MICFINDER_API_URL;
+const MIC_CACHE_KEY = `micfinder:mics:v1:${API_URL}`;
+
+const isMicList = (mics) => Array.isArray(mics) && mics.every(mic =>
+  mic && mic.id != null && typeof mic.name === 'string' &&
+  typeof mic.startDate === 'string'
+);
+
+const readCachedMics = () => {
+  try {
+    const mics = JSON.parse(localStorage.getItem(MIC_CACHE_KEY));
+    return isMicList(mics) ? mics : null;
+  } catch {
+    return null; // Storage can be unavailable or contain an invalid cache.
+  }
+};
+
+const loadMics = async (signal) => {
+  const response = await fetch(`${API_URL}/mics`, { signal, cache: 'no-store' });
+  if (!response.ok) throw new Error('Failed to fetch open mics');
+  const data = await response.json();
+  const mics = data.mics ?? data;
+  if (!isMicList(mics)) throw new Error('Unexpected open mics response');
+  return mics;
+};
+
 const parseMicDate = (dateString) => {
   if (dateString.includes('T')) {
     return new Date(dateString);
@@ -85,6 +110,10 @@ const MicFinder = () => {
   const [passwordResetRequired, setPasswordResetRequired] = useState(false);
   // State for server loading status
   const [isServerLoading, setIsServerLoading] = useState(true);
+  const [hasMicData, setHasMicData] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(true);
+  const [refreshError, setRefreshError] = useState(false);
+  const micRequest = useRef(null);
   // State for server loading timeout
   const [serverLoadingTimeout, setServerLoadingTimeout] = useState(false);
   // percentage counter for wakeup screen
@@ -98,71 +127,91 @@ const MicFinder = () => {
   // State for copy feedback
   const [copySuccess, setCopySuccess] = useState(false);
 
-  // Check server health and load data from backend on component mount
-  useEffect(() => {
-    // Check if token is expired
-    const authToken = localStorage.getItem('authToken');
-    if (authToken && isTokenExpired(authToken)) {
-      // Token is expired, log the user out
-      setUser(null);
-      localStorage.removeItem('currentUser');
-      localStorage.removeItem('authToken');
-      console.log('Session expired. Please log in again.');
-    }
+  const fetchMics = useCallback(async ({ wakeServer = false } = {}) => {
+    micRequest.current?.abort();
+    const controller = new AbortController();
+    micRequest.current = controller;
+    const { signal } = controller;
+    setIsRefreshing(true);
+    setRefreshError(false);
 
-    // Set a timeout to show the loading message if the server takes too long
-    const timeoutId = setTimeout(() => {
+    const showCachedMics = () => {
+      const cachedMics = readCachedMics();
+      if (cachedMics !== null) {
+        setOpenMics(cachedMics);
+        setHasMicData(true);
+        setIsServerLoading(false);
+      }
+    };
+    const timeoutId = wakeServer ? setTimeout(() => {
       setServerLoadingTimeout(true);
-    }, 1500); // ms to wait before showing sleepy computer
+      showCachedMics();
+    }, 1500) : null;
 
-    if (isServerLoading && serverLoadingTimeout) {
-      const interval = setInterval(() => {
-        setLoadingPercent(prev => {
-          if (prev >= 100) {
-            clearInterval(interval);
-            return 100;
-          }
-          return Math.floor(prev + (100/30)); // increment up to 100% over 30 seconds
-        });
-      }, 1000);
-
-      return () => clearInterval(interval); // cleanup
+    try {
+      if (wakeServer) {
+        // Keep the wakeup probe, but a failed probe must not prevent a list fetch.
+        try {
+          await fetch(`${API_URL}/health`, { signal, cache: 'no-store' });
+        } catch (error) {
+          if (signal.aborted) throw error;
+        }
+      }
+      const mics = await loadMics(signal);
+      if (signal.aborted) return;
+      setOpenMics(mics);
+      setHasMicData(true);
+    } catch (error) {
+      if (signal.aborted) return;
+      console.error('Error loading open mics data from server:', error);
+      if (wakeServer) showCachedMics();
+      setRefreshError(true);
+    } finally {
+      clearTimeout(timeoutId);
+      if (!signal.aborted) {
+        setIsServerLoading(false);
+        setIsRefreshing(false);
+      }
     }
+  }, []);
 
-    // Check server health first
-    fetch(`${API_URL}/health`)
-      .then(response => response.json())
-      .finally(() => {
-        // Clear the timeout if the health check completes (success or error)
-        clearTimeout(timeoutId);
+  useEffect(() => {
+    fetchMics({ wakeServer: true });
+    return () => micRequest.current?.abort();
+  }, [fetchMics]);
 
-        // Now fetch the actual data
-        fetch(`${API_URL}/mics`)
-          .then(response => response.json())
-          .then(data => {
-            // Make sure we're handling the data structure correctly
-            if (data.mics && Array.isArray(data.mics)) {
-              setOpenMics(data.mics);
-            } else {
-              console.error('Unexpected data format from server:', data);
-              setOpenMics([]);
-            }
-          })
-          .catch(error => {
-            console.error('Error loading open mics data from server:', error);
-            setOpenMics([]);
-          })
-          .finally(() => {
-            setIsServerLoading(false);
-          });
-      });
-
-    // Check if user is logged in
-    const savedUser = localStorage.getItem('currentUser');
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
+  // Persist raw records, including successful edits and deletions, not occurrences.
+  useEffect(() => {
+    if (!hasMicData) return;
+    try {
+      localStorage.setItem(MIC_CACHE_KEY, JSON.stringify(openMics));
+    } catch {
+      // Disabled storage or a full quota must not prevent live browsing.
     }
+  }, [openMics, hasMicData]);
+
+  useEffect(() => {
+    if (!isServerLoading || !serverLoadingTimeout) return;
+    const interval = setInterval(() => {
+      setLoadingPercent(prev => Math.min(100, prev + 3));
+    }, 1000);
+    return () => clearInterval(interval);
   }, [isServerLoading, serverLoadingTimeout]);
+
+  useEffect(() => {
+    try {
+      const authToken = localStorage.getItem('authToken');
+      if (authToken && isTokenExpired(authToken)) {
+        localStorage.removeItem('currentUser');
+        localStorage.removeItem('authToken');
+      } else {
+        const savedUser = localStorage.getItem('currentUser');
+        if (savedUser) setUser(JSON.parse(savedUser));
+      }
+    } catch {
+      // Public browsing still works without browser storage.
+    }
+  }, []);
 
   // Handle URL parameters on component mount and when openMics change
   useEffect(() => {
@@ -340,26 +389,6 @@ const MicFinder = () => {
     }
   };
 
-  // Function to fetch mics from the API
-  const fetchMics = () => {
-    fetch(`${API_URL}/mics`)
-      .then(response => response.json())
-      .then(data => {
-        // Make sure we're handling the data structure correctly
-        if (data.mics && Array.isArray(data.mics)) {
-          setOpenMics(data.mics);
-        } else if (Array.isArray(data)) {
-          setOpenMics(data);
-        } else {
-          console.error('Unexpected data format from server:', data);
-          setOpenMics([]);
-        }
-      })
-      .catch(error => {
-        console.error('Error loading open mics data from server:', error);
-        setOpenMics([]);
-      });
-  };
 
   const editOpenMic = async (id) => {
     try {
@@ -469,6 +498,7 @@ const MicFinder = () => {
       setOpenMics(prev => prev.map(mic =>
         mic.id === result.mic.id ? result.mic : mic
       ));
+      fetchMics();
     } catch (error) {
       console.error('Error updating recurrence exception:', error);
       alert(`Error: ${error.message}`);
@@ -1451,6 +1481,18 @@ const MicFinder = () => {
         </button>
         </div>
         )}
+      <div role="status" aria-live="polite" className="flex items-center justify-center gap-2 p-4 text-sm">
+        {isRefreshing ? (
+          <>
+            <span aria-hidden="true" className="h-4 w-4 rounded-full border-2 border-current border-t-transparent animate-spin motion-reduce:animate-none" />
+            <span>Refreshing listings…</span>
+          </>
+        ) : refreshError ? (
+          <span>{hasMicData
+            ? 'Couldn’t refresh—showing saved listings, which may be out of date.'
+            : 'Couldn’t load listings. Please try again later.'}</span>
+        ) : null}
+      </div>
     </main>
     {/* Password Change Modal */}
     {showPasswordChange && user && (
