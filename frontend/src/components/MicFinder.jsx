@@ -95,13 +95,15 @@ const MicFinder = () => {
   // State for view mode
   const [viewMode, setViewMode] = useState('view'); // 'view', 'add', 'edit'
   // State for calendar view type
-  const [calendarView, setCalendarView] = useState('month'); // 'month', 'week'
+  const [calendarView, setCalendarView] = useState(() =>
+    window.matchMedia('(max-width: 639px)').matches ? 'week' : 'month'
+  ); // Choose an initial view; resizing must not override the user's choice.
+  const todayRef = useRef(null);
+  const initialScrollPending = useRef(calendarView === 'week');
   // State for current calendar date
   const [currentDate, setCurrentDate] = useState(new Date());
   // State for display mode (calendar or list)
-  const [displayMode, setDisplayMode] = useState(() =>
-    window.matchMedia('(max-width: 639px)').matches ? 'list' : 'calendar'
-  ); // Choose an initial view; resizing must not override the user's choice.
+  const [displayMode, setDisplayMode] = useState('calendar');
   // State for displaying login status
   const [loginError, setLoginError] = useState('');
   // State for password reset
@@ -179,6 +181,14 @@ const MicFinder = () => {
     fetchMics({ wakeServer: true });
     return () => micRequest.current?.abort();
   }, [fetchMics]);
+
+  useEffect(() => {
+    if (isServerLoading || !initialScrollPending.current) return;
+    initialScrollPending.current = false;
+    // Shared mic links open details, not the calendar.
+    if (new URLSearchParams(window.location.search).has('id')) return;
+    todayRef.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
+  }, [isServerLoading]);
 
   // Persist raw records, including successful edits and deletions, not occurrences.
   useEffect(() => {
@@ -920,6 +930,7 @@ const MicFinder = () => {
             return (
               <div
                 key={index}
+                ref={isToday ? todayRef : null}
                 className={`calendar-day ${isCurrentMonth ? '' : 'outside-month'} ${isToday ? 'is-today' : ''}`}
               >
                 <div className="calendar-date" aria-current={isToday ? 'date' : undefined}>

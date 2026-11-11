@@ -206,6 +206,7 @@
   .week-grid { grid-template-columns: minmax(0, 1fr); gap: 10px; }
   .week-grid > .calendar-weekday { display: none; }
   .week-grid .calendar-day { min-height: 0; padding: 14px; }
+  .week-grid .is-today { scroll-margin-top: 24px; }
   .week-grid .calendar-date { text-align: left; font-size: 14px; }
   .week-day-name { display: inline; }
   .week-grid .event-name { font-size: 16px; }
