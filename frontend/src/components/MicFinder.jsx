@@ -3,31 +3,8 @@ import { RRule, rrulestr } from 'rrule';
 import RecurrenceSelector from './RecurrenceSelector';
 import PasswordChange from './PasswordChange';
 import QRCode from 'qrcode';
+import { cacheMics, readCachedMics, readMic, readMics } from '../micData';
 const API_URL = import.meta.env.VITE_MICFINDER_API_URL;
-const MIC_CACHE_KEY = `micfinder:mics:v1:${API_URL}`;
-
-const isMicList = (mics) => Array.isArray(mics) && mics.every(mic =>
-  mic && mic.id != null && typeof mic.name === 'string' &&
-  typeof mic.startDate === 'string'
-);
-
-const readCachedMics = () => {
-  try {
-    const mics = JSON.parse(localStorage.getItem(MIC_CACHE_KEY));
-    return isMicList(mics) ? mics : null;
-  } catch {
-    return null; // Storage can be unavailable or contain an invalid cache.
-  }
-};
-
-const loadMics = async (signal) => {
-  const response = await fetch(`${API_URL}/mics`, { signal, cache: 'no-store' });
-  if (!response.ok) throw new Error('Failed to fetch open mics');
-  const data = await response.json();
-  const mics = data.mics ?? data;
-  if (!isMicList(mics)) throw new Error('Unexpected open mics response');
-  return mics;
-};
 
 const parseMicDate = (dateString) => {
   if (dateString.includes('T')) {
@@ -73,7 +50,8 @@ const isTokenExpired = (token) => {
 
 const MicFinder = () => {
   // State for all open mics
-  const [openMics, setOpenMics] = useState([]);
+  const [cachedMics] = useState(readCachedMics);
+  const [openMics, setOpenMics] = useState(cachedMics ?? []);
   // State for the form
   const [currentMic, setCurrentMic] = useState({
     id: '',
@@ -111,8 +89,8 @@ const MicFinder = () => {
   // State for password reset required
   const [passwordResetRequired, setPasswordResetRequired] = useState(false);
   // State for server loading status
-  const [isServerLoading, setIsServerLoading] = useState(true);
-  const [hasMicData, setHasMicData] = useState(false);
+  const [isServerLoading, setIsServerLoading] = useState(cachedMics === null);
+  const [hasMicData, setHasMicData] = useState(cachedMics !== null);
   const [isRefreshing, setIsRefreshing] = useState(true);
   const [refreshError, setRefreshError] = useState(false);
   const micRequest = useRef(null);
@@ -137,17 +115,8 @@ const MicFinder = () => {
     setIsRefreshing(true);
     setRefreshError(false);
 
-    const showCachedMics = () => {
-      const cachedMics = readCachedMics();
-      if (cachedMics !== null) {
-        setOpenMics(cachedMics);
-        setHasMicData(true);
-        setIsServerLoading(false);
-      }
-    };
     const timeoutId = wakeServer ? setTimeout(() => {
       setServerLoadingTimeout(true);
-      showCachedMics();
     }, 1500) : null;
 
     try {
@@ -159,14 +128,13 @@ const MicFinder = () => {
           if (signal.aborted) throw error;
         }
       }
-      const mics = await loadMics(signal);
+      const mics = await readMics({ fresh: true, signal });
       if (signal.aborted) return;
       setOpenMics(mics);
       setHasMicData(true);
     } catch (error) {
       if (signal.aborted) return;
       console.error('Error loading open mics data from server:', error);
-      if (wakeServer) showCachedMics();
       setRefreshError(true);
     } finally {
       clearTimeout(timeoutId);
@@ -193,11 +161,7 @@ const MicFinder = () => {
   // Persist raw records, including successful edits and deletions, not occurrences.
   useEffect(() => {
     if (!hasMicData) return;
-    try {
-      localStorage.setItem(MIC_CACHE_KEY, JSON.stringify(openMics));
-    } catch {
-      // Disabled storage or a full quota must not prevent live browsing.
-    }
+    cacheMics(openMics);
   }, [openMics, hasMicData]);
 
   useEffect(() => {
@@ -223,22 +187,34 @@ const MicFinder = () => {
     }
   }, []);
 
-  // Handle URL parameters on component mount and when openMics change
+  // Shared links use the same cache-first reader as calendar and list clicks.
   useEffect(() => {
-    if (openMics.length > 0) {
-      const urlParams = new URLSearchParams(window.location.search);
-      const micId = urlParams.get('id');
+    if (viewMode !== 'view' && viewMode !== 'view-mic') return;
+    const micId = new URLSearchParams(window.location.search).get('id');
+    if (!micId) return;
 
-      if (micId) {
-        // Find the mic and view it
-        const mic = openMics.find(m => m.id.toString() === micId);
-        if (mic) {
-          setCurrentMic(mic);
-          setViewMode('view-mic');
-        }
-      }
+    if (viewMode === 'view-mic') {
+      // Refresh visible details without replacing an edit form or occurrence date.
+      const mic = openMics.find(mic => String(mic.id) === micId);
+      if (mic) setCurrentMic(mic);
+      return;
     }
-  }, [openMics]);
+
+    const controller = new AbortController();
+    readMic(micId, { mics: openMics, signal: controller.signal })
+      .then(mic => {
+        if (controller.signal.aborted) return;
+        setCurrentMic(mic);
+        setViewMode('view-mic');
+      })
+      .catch(error => {
+        if (!controller.signal.aborted) {
+          console.error('Error fetching open mic details:', error);
+          alert(`Error: ${error.message}`);
+        }
+      });
+    return () => controller.abort();
+  }, [openMics, viewMode]);
 
   // Login handler
   const handleLogin = async (e) => {
@@ -413,15 +389,7 @@ const MicFinder = () => {
         return;
       }
 
-      // Fetch the latest version of the mic from the server
-      const response = await fetch(`${API_URL}/mics/${id}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch open mic details');
-      }
-
-      const result = await response.json();
-      const mic = result.mic;
+      const mic = await readMic(id, { fresh: true });
       setCurrentMic({
         ...mic,
         recurrenceEndDate: mic.recurrenceEndDate || '',
@@ -442,15 +410,7 @@ const MicFinder = () => {
       url.searchParams.set('id', id);
       window.history.pushState({}, '', url);
 
-      // Fetch the latest version of the mic from the server
-      const response = await fetch(`${API_URL}/mics/${id}`);
-
-      if (!response.ok) {
-        throw new Error('Failed to fetch open mic details');
-      }
-
-      const result = await response.json();
-      const mic = result.mic;
+      const mic = await readMic(id, { mics: openMics });
       setCurrentMic({
         ...mic,
         recurrenceEndDate: mic.recurrenceEndDate || '',
@@ -476,11 +436,7 @@ const MicFinder = () => {
         return;
       }
 
-      const latestResponse = await fetch(`${API_URL}/mics/${currentMic.id}`);
-      if (!latestResponse.ok) {
-        throw new Error('Failed to fetch the latest open mic details');
-      }
-      const latestMic = (await latestResponse.json()).mic;
+      const latestMic = await readMic(currentMic.id, { fresh: true });
       const excludedDates = new Set(latestMic.excludedDates || []);
       if (shouldExclude) {
         excludedDates.add(selectedOccurrenceDate);
@@ -517,7 +473,7 @@ const MicFinder = () => {
 
 
   // Delete an open mic
-  const deleteOpenMic = async (id, edit_version) => {
+  const deleteOpenMic = async (id) => {
     if (window.confirm('Are you sure you want to delete this open mic?')) {
       try {
         const authToken = localStorage.getItem('authToken');
@@ -536,7 +492,8 @@ const MicFinder = () => {
           return;
         }
 
-        const query = edit_version != null ? `?edit_version=${edit_version}` : '';
+        const { edit_version } = await readMic(id, { fresh: true });
+        const query = `?edit_version=${edit_version}`;
         const response = await fetch(`${API_URL}/mics/${id}${query}`, {
           method: 'DELETE',
           headers: {
@@ -550,6 +507,13 @@ const MicFinder = () => {
 
         // Update local state
         setOpenMics(prev => prev.filter(mic => mic.id !== id));
+        const url = new URL(window.location);
+        if (url.searchParams.get('id') === String(id)) {
+          url.searchParams.delete('id');
+          window.history.pushState({}, '', url);
+          setSelectedOccurrenceDate('');
+          setViewMode('view');
+        }
 
         // Refresh the list from the server
         fetchMics();
@@ -1428,7 +1392,7 @@ const MicFinder = () => {
                             Edit
                           </button>
                           <button
-                            onClick={() => deleteOpenMic(mic.id, mic.edit_version)}
+                            onClick={() => deleteOpenMic(mic.id)}
                             className="text-red-500 hover:underline"
                           >
                             Delete

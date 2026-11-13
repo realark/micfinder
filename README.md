@@ -67,8 +67,10 @@ ln -s .env.local.sample .env
 
 ## Running tests
 ```sh
-cd backend/
-npm run test
+npm --prefix backend test  # Requires Docker for PostgreSQL
+npm --prefix frontend test # Cache-first read regressions
+npm --prefix frontend run lint
+npm --prefix frontend run build
 ```
 
 ## Running a local dev environment
